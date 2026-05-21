@@ -1,0 +1,45 @@
+name = "webgame-template"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets (Tailwind CSS, client JS, favicon, etc.).
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Bundle all JSON content into the Worker. Editing content via the admin UI
+# pushes to GitHub, which triggers an automatic redeploy.
+[[rules]]
+type = "Text"
+globs = ["**/*.json"]
+fallthrough = true
+
+# ----------------------------------------------------------------------------
+# Required bindings — configure these in the Cloudflare dashboard before
+# deploying, or via `wrangler secret put` / dashboard variables.
+# ----------------------------------------------------------------------------
+#
+# Secrets (use `wrangler secret put <NAME>`):
+#   ADMIN_PASSWORD         Password for the /admin login.
+#   ADMIN_SESSION_SECRET   Random string used to sign admin session cookies.
+#   GITHUB_TOKEN           GitHub PAT with `contents:write` on the repo.
+#   R2_UPLOAD_SECRET       Random string used to sign R2 upload requests.
+#
+# Plain variables (set in [vars] or dashboard):
+#   GITHUB_REPO            "owner/repo" the admin commits content to.
+#   GITHUB_BRANCH          Branch to commit to (e.g. "main").
+#   R2_PUBLIC_BASE_URL     Public base URL for the R2 bucket (custom domain).
+#
+# R2 binding:
+#   R2_UPLOADS             Bucket used for cover image uploads.
+# ----------------------------------------------------------------------------
+
+[vars]
+GITHUB_REPO = ""
+GITHUB_BRANCH = "main"
+R2_PUBLIC_BASE_URL = ""
+
+[[r2_buckets]]
+binding = "R2_UPLOADS"
+bucket_name = "webgame-uploads"

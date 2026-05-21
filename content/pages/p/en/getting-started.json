@@ -1,0 +1,32 @@
+{
+  "type": "guide",
+  "lang": "en",
+  "slug": "getting-started",
+  "title": "Getting Started — A Beginner's Guide",
+  "description": "Brand new to browser games? This quick guide walks you through controls, settings, and how to find games you'll love.",
+  "cover": "https://placehold.co/1200x675/0ea5e9/ffffff?text=Guide",
+  "tags": ["guide", "beginner"],
+  "publishedAt": "2026-04-01T00:00:00Z",
+  "updatedAt": "2026-05-21T00:00:00Z",
+  "alternateKey": "getting-started",
+  "modules": [
+    {
+      "type": "video-iframe",
+      "url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "ratio": "16:9",
+      "title": "Getting started"
+    },
+    {
+      "type": "seo-content",
+      "variant": "rich-text",
+      "body": "## Welcome\n\nThis guide walks you through everything you need to get the most out of browser games.\n\n## Controls\n\nMost games use the arrow keys or WASD for movement. You can also use a connected controller — most modern games support gamepads natively.\n\n## Where to start\n\nIf you're new, jump straight into the [Sample Runner](/g/sample-runner) game above to see how everything works."
+    },
+    {
+      "type": "page-list",
+      "heading": "Related guides",
+      "source": "related",
+      "filter": { "type": "guide" },
+      "limit": 8
+    }
+  ]
+}

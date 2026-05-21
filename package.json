@@ -1,0 +1,20 @@
+{
+  "name": "webgame-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A SEO-friendly online game website template, deployable to Cloudflare Workers with one click.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run build:css && wrangler deploy",
+    "build:css": "tailwindcss -i ./src/styles/input.css -o ./public/assets/app.css --minify",
+    "watch:css": "tailwindcss -i ./src/styles/input.css -o ./public/assets/app.css --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240529.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5",
+    "wrangler": "^3.60.0"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "type": "home",
+  "lang": "en",
+  "slug": "home",
+  "title": "WebGame Template — Play Free Online Games",
+  "description": "A SEO-friendly template for building online game sites on Cloudflare Workers. Replace this with your own catalog of HTML5 games.",
+  "cover": "",
+  "tags": [],
+  "publishedAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-05-21T00:00:00Z",
+  "alternateKey": "home",
+  "modules": [
+    {
+      "type": "seo-content",
+      "variant": "intro",
+      "heading": "Welcome to your game site",
+      "body": "This is a starter homepage. Use the admin at `/admin` to add games, write guides, and customize this page. Every page is built from a few reusable modules: a game iframe, a video iframe, a page list, and SEO content blocks."
+    },
+    {
+      "type": "page-list",
+      "heading": "Latest Games",
+      "source": "latest",
+      "filter": { "type": "game" },
+      "limit": 12
+    },
+    {
+      "type": "page-list",
+      "heading": "Latest Guides",
+      "source": "latest",
+      "filter": { "type": "guide" },
+      "limit": 6,
+      "layout": "list"
+    },
+    {
+      "type": "seo-content",
+      "variant": "features-grid",
+      "heading": "Why this template",
+      "items": [
+        { "icon": "⚡", "title": "Fast and SEO-friendly", "body": "Server-rendered HTML on Cloudflare Workers — fast TTFB, perfect for search crawlers." },
+        { "icon": "🧩", "title": "Composable modules", "body": "Every page is built from a few reusable modules you can rearrange." },
+        { "icon": "🌍", "title": "Multilingual by design", "body": "Each page version is independent; hreflang and language switcher generated automatically." }
+      ]
+    }
+  ]
+}

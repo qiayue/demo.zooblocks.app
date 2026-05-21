@@ -1,0 +1,35 @@
+{
+  "type": "home",
+  "lang": "zh",
+  "slug": "home",
+  "title": "WebGame 模板 — 免费在线游戏",
+  "description": "基于 Cloudflare Workers 的在线小游戏网站模板，SEO 友好，开箱即用。",
+  "cover": "",
+  "tags": [],
+  "publishedAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-05-21T00:00:00Z",
+  "alternateKey": "home",
+  "modules": [
+    {
+      "type": "seo-content",
+      "variant": "intro",
+      "heading": "欢迎使用 WebGame 模板",
+      "body": "这是首页示例。打开 `/admin` 即可添加游戏、撰写攻略、修改本页。每一个页面都由几个可复用的模块组合而成：游戏 iframe、视频 iframe、页面列表、SEO 内容。"
+    },
+    {
+      "type": "page-list",
+      "heading": "最新游戏",
+      "source": "latest",
+      "filter": { "type": "game" },
+      "limit": 12
+    },
+    {
+      "type": "page-list",
+      "heading": "最新攻略",
+      "source": "latest",
+      "filter": { "type": "guide" },
+      "limit": 6,
+      "layout": "list"
+    }
+  ]
+}

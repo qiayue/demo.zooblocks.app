@@ -1,0 +1,26 @@
+{
+  "name": "WebGame Template",
+  "description": "A SEO-friendly online game website template, deployed on Cloudflare Workers.",
+  "defaultLang": "en",
+  "languages": [
+    { "code": "en", "label": "English", "htmlLang": "en" },
+    { "code": "zh", "label": "中文", "htmlLang": "zh-CN" }
+  ],
+  "menu": [
+    { "label": "Home", "url": "/", "lang": "en" },
+    { "label": "Action", "url": "/t/action", "lang": "en" },
+    { "label": "Guides", "url": "/p/getting-started", "lang": "en" },
+    { "label": "首页", "url": "/zh/", "lang": "zh" },
+    { "label": "动作", "url": "/zh/t/action", "lang": "zh" }
+  ],
+  "footer": {
+    "copyright": "© 2026 WebGame Template",
+    "links": [
+      { "label": "About", "url": "/p/about", "lang": "en" },
+      { "label": "Privacy", "url": "/p/privacy", "lang": "en" },
+      { "label": "关于我们", "url": "/zh/p/about", "lang": "zh" }
+    ]
+  },
+  "adsense": { "clientId": "" },
+  "analytics": {}
+}

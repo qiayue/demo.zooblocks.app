@@ -1,0 +1,37 @@
+{
+  "type": "tag",
+  "lang": "en",
+  "slug": "action",
+  "tagSlug": "action",
+  "title": "Action Games — Fast-Paced, High-Adrenaline Fun",
+  "description": "Browse all action games on the site. Action games reward quick reflexes, precision, and split-second decisions.",
+  "cover": "",
+  "tags": ["action"],
+  "publishedAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-05-21T00:00:00Z",
+  "alternateKey": "tag-action",
+  "modules": [
+    {
+      "type": "seo-content",
+      "variant": "intro",
+      "heading": "What are action games?",
+      "body": "Action games are a broad genre defined by fast pacing, reflex-driven gameplay and constant decision-making. From endless runners and platformers to shoot-'em-ups and fighting games, the common thread is that **what you do in the moment matters**.\n\nThe best action games balance challenge and accessibility: easy to pick up, hard to master."
+    },
+    {
+      "type": "page-list",
+      "heading": "All action games",
+      "source": "tag",
+      "filter": { "type": "game" },
+      "limit": 24
+    },
+    {
+      "type": "seo-content",
+      "variant": "faq",
+      "heading": "FAQ about action games",
+      "items": [
+        { "q": "Are action games good for kids?", "a": "Many are! Look for cartoonish art styles and avoid titles labeled for older audiences." },
+        { "q": "Can I play action games on a phone?", "a": "Yes — most games on this site adapt to touch controls automatically." }
+      ]
+    }
+  ]
+}

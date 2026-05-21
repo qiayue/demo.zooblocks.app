@@ -1,0 +1,69 @@
+{
+  "type": "game",
+  "lang": "en",
+  "slug": "sample-runner",
+  "title": "Sample Runner — Play Online Free",
+  "description": "Sample Runner is an endless-runner demo used to show how the game page template renders. Replace this entry with your own game.",
+  "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
+  "tags": ["action", "runner"],
+  "publishedAt": "2026-05-01T00:00:00Z",
+  "updatedAt": "2026-05-21T00:00:00Z",
+  "alternateKey": "sample-runner",
+  "modules": [
+    {
+      "type": "game-iframe",
+      "url": "https://example.com/games/sample-runner/",
+      "ratio": "16:9"
+    },
+    {
+      "type": "seo-content",
+      "variant": "intro",
+      "heading": "About Sample Runner",
+      "body": "Sample Runner is a fast-paced endless-runner where you sprint, jump and slide through procedurally generated streets. Collect coins, dodge obstacles, and unlock new characters as you progress.\n\nThe goal is simple: survive as long as possible while racking up the highest score. Each run is different — perfect for short play sessions or long-haul leaderboard chases."
+    },
+    {
+      "type": "seo-content",
+      "variant": "features-grid",
+      "heading": "Game features",
+      "items": [
+        { "icon": "🏃", "title": "Endless running", "body": "Procedurally generated levels mean no two runs are alike." },
+        { "icon": "🎯", "title": "Daily challenges", "body": "New missions every day to keep things fresh." },
+        { "icon": "🏆", "title": "Global leaderboard", "body": "Compete with players around the world for the top score." }
+      ]
+    },
+    {
+      "type": "seo-content",
+      "variant": "steps",
+      "heading": "How to play",
+      "intro": "Sample Runner uses simple, intuitive controls that work on desktop and mobile.",
+      "items": [
+        { "title": "Move", "body": "Use the arrow keys or swipe left/right to switch lanes." },
+        { "title": "Jump", "body": "Press space or swipe up to jump over obstacles." },
+        { "title": "Slide", "body": "Press down or swipe down to slide under barriers." }
+      ]
+    },
+    {
+      "type": "seo-content",
+      "variant": "faq",
+      "heading": "Frequently Asked Questions",
+      "items": [
+        { "q": "Is Sample Runner free to play?", "a": "Yes — every game on this site is free, no installs required." },
+        { "q": "Can I play on mobile?", "a": "Yes. The game adapts to touch input on phones and tablets." },
+        { "q": "Are my high scores saved?", "a": "Scores are saved locally in your browser." }
+      ]
+    },
+    {
+      "type": "page-list",
+      "heading": "Related Games",
+      "source": "related",
+      "limit": 8
+    },
+    {
+      "type": "page-list",
+      "heading": "Latest Games",
+      "source": "latest",
+      "filter": { "type": "game" },
+      "limit": 12
+    }
+  ]
+}
