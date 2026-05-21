@@ -110,6 +110,23 @@ After the deploy finishes (either path), the `/setup` wizard guides you the
 rest of the way — config goes into a private R2 file (`_config/runtime.json`),
 nothing sensitive is committed to GitHub.
 
+## Syncing template updates
+
+When upstream pushes a bug fix or new feature, pull it into your site with:
+
+```bash
+npm run sync
+```
+
+This adds the upstream remote (once), fetches it, shows you which files
+would change, and overwrites only the **template code** paths (src/,
+public/assets/*.js, scripts/, build configs, README). It does NOT touch
+your `content/` directory, and for `wrangler.toml` it preserves your
+Worker name and bucket name.
+
+After it finishes, run `npm install`, review with `git diff --staged`,
+commit, and push. Cloudflare will redeploy automatically.
+
 ## Local development
 
 ```bash
