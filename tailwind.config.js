@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     './src/**/*.ts',
+    './public/assets/*.js',
   ],
   theme: {
     extend: {

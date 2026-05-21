@@ -1,5 +1,6 @@
 import type { Env } from './types';
 import { getSite, getIndex, getPage, getUiStrings } from './lib/content';
+import { loadConfig } from './lib/config';
 import { parsePath, redirectForDefaultLang } from './lib/url';
 import { buildRobots, buildSitemap } from './lib/seo';
 import { renderPage } from './renderer/page';
@@ -7,17 +8,27 @@ import { renderNotFound } from './renderer/notFound';
 import { handleAdminApi } from './admin/api';
 import { handleLogin, handleLogout } from './admin/login';
 import { renderAdminShell } from './admin/ui';
+import { handleSetupApi } from './setup/api';
+import { renderSetupShell } from './setup/ui';
 
 export async function handle(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
   const origin = url.origin;
 
-  // Static assets (Tailwind CSS, client JS, etc.). With the [assets] binding,
-  // Cloudflare usually serves these before the Worker runs, but we forward
-  // explicitly as a fallback for `wrangler dev` and any edge cases.
+  // Static assets — always reachable.
   if (path.startsWith('/assets/') || path === '/favicon.ico') {
     return env.ASSETS.fetch(req);
+  }
+
+  // Setup wizard is always reachable (it gates itself based on config state).
+  if (path === '/setup' || path === '/setup/') return renderSetupShell(env, req);
+  if (path.startsWith('/setup/api/')) return handleSetupApi(req, env);
+
+  // If the site isn't configured yet, redirect every other request to /setup.
+  const config = await loadConfig(env);
+  if (!config.setupCompleted) {
+    return Response.redirect(origin + '/setup', 302);
   }
 
   // Special routes
@@ -45,7 +56,6 @@ export async function handle(req: Request, env: Env): Promise<Response> {
   // Site pages
   const site = getSite();
 
-  // 301: /{defaultLang}/... -> /...
   const redirectTarget = redirectForDefaultLang(site, path);
   if (redirectTarget !== null) {
     return Response.redirect(origin + redirectTarget + url.search, 301);

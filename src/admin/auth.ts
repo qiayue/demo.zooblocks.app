@@ -1,13 +1,14 @@
 import type { Env } from '../types';
+import { loadConfig, verifyPasswordHash, type RuntimeConfig } from '../lib/config';
 
 // ---------------------------------------------------------------------------
 // Admin authentication.
 //
-// Single-user, password-only. The password is stored as a Worker secret
-// (ADMIN_PASSWORD). On successful login we issue an HMAC-signed cookie that
-// includes an expiration; subsequent admin requests must present a valid,
-// non-expired cookie. CSRF for state-changing requests is handled separately
-// in `api.ts`.
+// Single-user, password-only. The password hash, session-signing secret, and
+// upload-signing secret are stored in R2 (see lib/config.ts). On successful
+// login we issue an HMAC-signed cookie that includes an expiration;
+// subsequent admin requests must present a valid, non-expired cookie. CSRF
+// for state-changing requests is handled separately in `api.ts`.
 // ---------------------------------------------------------------------------
 
 const COOKIE_NAME = 'wg_admin';
@@ -23,11 +24,12 @@ export async function createSessionCookie(
   opts: { secure?: boolean } = {},
   now = Math.floor(Date.now() / 1000),
 ): Promise<string> {
+  const config = await loadConfig(env);
   const session: Session = { user: 'admin', exp: now + SESSION_TTL_SEC };
   const payload = btoa(JSON.stringify(session));
-  const sig = await hmac(env.ADMIN_SESSION_SECRET, payload);
+  const sig = await hmac(config.sessionSecret, payload);
   const value = `${payload}.${sig}`;
-  const secure = opts.secure !== false; // default secure
+  const secure = opts.secure !== false;
   return `${COOKIE_NAME}=${value}; Path=/; HttpOnly;${secure ? ' Secure;' : ''} SameSite=Strict; Max-Age=${SESSION_TTL_SEC}`;
 }
 
@@ -37,13 +39,15 @@ export function clearSessionCookie(opts: { secure?: boolean } = {}): string {
 }
 
 export async function readSession(env: Env, req: Request): Promise<Session | null> {
+  const config = await loadConfig(env);
+  if (!config.sessionSecret) return null;
   const cookieHeader = req.headers.get('Cookie');
   if (!cookieHeader) return null;
   const cookie = parseCookie(cookieHeader)[COOKIE_NAME];
   if (!cookie) return null;
   const [payload, sig] = cookie.split('.');
   if (!payload || !sig) return null;
-  const expected = await hmac(env.ADMIN_SESSION_SECRET, payload);
+  const expected = await hmac(config.sessionSecret, payload);
   if (!safeEqual(sig, expected)) return null;
   try {
     const data = JSON.parse(atob(payload)) as Session;
@@ -56,23 +60,20 @@ export async function readSession(env: Env, req: Request): Promise<Session | nul
 }
 
 export async function verifyPassword(env: Env, input: string): Promise<boolean> {
-  if (!env.ADMIN_PASSWORD) return false;
   if (input.length === 0) return false;
-  // Constant-time-ish compare: hash both, compare HMACs.
-  const a = await hmac(env.ADMIN_SESSION_SECRET, input);
-  const b = await hmac(env.ADMIN_SESSION_SECRET, env.ADMIN_PASSWORD);
-  return safeEqual(a, b);
+  const config = await loadConfig(env);
+  if (!config.adminPasswordHash) return false;
+  return verifyPasswordHash(input, config.adminPasswordHash);
 }
 
 // ---------------------------------------------------------------------------
-// Rate limiting (per-instance, in-memory). Best-effort: at scale this won't
-// fully prevent distributed brute-force, but blocks single-IP grinding.
+// Rate limiting (per-instance, in-memory).
 // ---------------------------------------------------------------------------
 
 interface RateEntry {
-  count: number;          // failures within the current window
-  windowStart: number;    // when the failure window began
-  lockedUntil: number;    // unix ms; non-zero while locked
+  count: number;
+  windowStart: number;
+  lockedUntil: number;
 }
 
 const loginAttempts = new Map<string, RateEntry>();
@@ -162,8 +163,9 @@ export async function signUploadToken(
   contentType: string,
   expiresAt: number,
 ): Promise<string> {
+  const config = await loadConfig(env);
   const payload = btoa(JSON.stringify({ filename, contentType, exp: expiresAt }));
-  const sig = await hmac(env.R2_UPLOAD_SECRET, payload);
+  const sig = await hmac(config.uploadSecret, payload);
   return `${payload}.${sig}`;
 }
 
@@ -171,9 +173,11 @@ export async function verifyUploadToken(
   env: Env,
   token: string,
 ): Promise<{ filename: string; contentType: string } | null> {
+  const config = await loadConfig(env);
+  if (!config.uploadSecret) return null;
   const [payload, sig] = token.split('.');
   if (!payload || !sig) return null;
-  const expected = await hmac(env.R2_UPLOAD_SECRET, payload);
+  const expected = await hmac(config.uploadSecret, payload);
   if (!safeEqual(sig, expected)) return null;
   try {
     const data = JSON.parse(atob(payload)) as { filename: string; contentType: string; exp: number };
@@ -183,3 +187,5 @@ export async function verifyUploadToken(
     return null;
   }
 }
+
+export type { RuntimeConfig };

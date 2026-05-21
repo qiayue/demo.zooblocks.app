@@ -1,5 +1,6 @@
 import type { Env, PageDetail, PageIndex, PageIndexEntry, PageType, SiteConfig } from '../types';
-import { commitFiles, getFile } from '../lib/github';
+import { commitFiles, deleteFile, getFile, ghClient } from '../lib/github';
+import { loadConfig } from '../lib/config';
 import { readSession, signUploadToken, verifyUploadToken } from './auth';
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,8 @@ export async function handleAdminApi(req: Request, env: Env): Promise<Response> 
 // ---------------------------------------------------------------------------
 
 async function handleGetSite(env: Env): Promise<Response> {
-  const file = await getFile(env, 'content/site.json');
+  const c = ghClient(await loadConfig(env));
+  const file = await getFile(c, 'content/site.json');
   if (!file) return json({ error: 'missing' }, 404);
   return new Response(file.text, { headers: { 'content-type': 'application/json' } });
 }
@@ -84,7 +86,8 @@ async function handleSaveSite(req: Request, env: Env): Promise<Response> {
   const body = (await req.json()) as SiteConfig;
   if (!body || typeof body !== 'object') return json({ error: 'bad-body' }, 400);
   const text = JSON.stringify(body, null, 2) + '\n';
-  await commitFiles(env, [{ path: 'content/site.json', text }], 'chore(content): update site config');
+  const c = ghClient(await loadConfig(env));
+  await commitFiles(c, [{ path: 'content/site.json', text }], 'chore(content): update site config');
   return json({ ok: true });
 }
 
@@ -93,7 +96,8 @@ async function handleSaveSite(req: Request, env: Env): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 async function handleGetIndex(env: Env): Promise<Response> {
-  const file = await getFile(env, 'content/index.json');
+  const c = ghClient(await loadConfig(env));
+  const file = await getFile(c, 'content/index.json');
   if (!file) return json({ entries: [], generatedAt: new Date().toISOString() });
   return new Response(file.text, { headers: { 'content-type': 'application/json' } });
 }
@@ -114,7 +118,8 @@ async function handleGetPage(
   lang: string,
   slug: string,
 ): Promise<Response> {
-  const file = await getFile(env, pagePath(type, lang, slug));
+  const c = ghClient(await loadConfig(env));
+  const file = await getFile(c, pagePath(type, lang, slug));
   if (!file) return json({ error: 'not-found' }, 404);
   return new Response(file.text, { headers: { 'content-type': 'application/json' } });
 }
@@ -131,7 +136,8 @@ async function handleSavePage(req: Request, env: Env): Promise<Response> {
   const text = JSON.stringify(page, null, 2) + '\n';
 
   // Rebuild the index entry for this page.
-  const indexFile = await getFile(env, 'content/index.json');
+  const c = ghClient(await loadConfig(env));
+  const indexFile = await getFile(c, 'content/index.json');
   const index: PageIndex = indexFile
     ? (JSON.parse(indexFile.text) as PageIndex)
     : { generatedAt: new Date().toISOString(), entries: [] };
@@ -163,7 +169,7 @@ async function handleSavePage(req: Request, env: Env): Promise<Response> {
   const registryText = buildPageFilesRegistry(nextIndex);
 
   await commitFiles(
-    env,
+    c,
     [
       { path: filePath, text },
       { path: 'content/index.json', text: JSON.stringify(nextIndex, null, 2) + '\n' },
@@ -181,8 +187,8 @@ async function handleDeletePage(
   lang: string,
   slug: string,
 ): Promise<Response> {
-  // Empty-out the JSON (set to a tombstone), and remove from index.
-  const indexFile = await getFile(env, 'content/index.json');
+  const c = ghClient(await loadConfig(env));
+  const indexFile = await getFile(c, 'content/index.json');
   const index: PageIndex = indexFile
     ? (JSON.parse(indexFile.text) as PageIndex)
     : { generatedAt: new Date().toISOString(), entries: [] };
@@ -200,7 +206,7 @@ async function handleDeletePage(
   // is harmless (it's orphaned). Easiest robust thing: use DELETE for the
   // file separately.
   await commitFiles(
-    env,
+    c,
     [
       { path: 'content/index.json', text: JSON.stringify(nextIndex, null, 2) + '\n' },
       { path: 'content/_page-files.ts', text: registryText },
@@ -208,31 +214,12 @@ async function handleDeletePage(
     `chore(content): delete ${type} ${lang}/${slug}`,
   );
 
-  await deleteFileBestEffort(env, pagePath(type, lang, slug));
+  try {
+    await deleteFile(c, pagePath(type, lang, slug));
+  } catch {
+    // Orphaned file — harmless, surfaces in the next save.
+  }
   return json({ ok: true });
-}
-
-async function deleteFileBestEffort(env: Env, filePath: string): Promise<void> {
-  const existing = await getFile(env, filePath);
-  if (!existing) return;
-  await fetch(
-    `https://api.github.com/repos/${env.GITHUB_REPO}/contents/${encodeURI(filePath)}`,
-    {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'webgame-template/1.0',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: `chore(content): remove file ${filePath}`,
-        sha: existing.sha,
-        branch: env.GITHUB_BRANCH,
-      }),
-    },
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +276,8 @@ async function handleUploadToken(req: Request, env: Env): Promise<Response> {
   const key = `covers/${Date.now()}-${cryptoRandom()}-${safeName}`;
   const exp = Math.floor(Date.now() / 1000) + 5 * 60;
   const token = await signUploadToken(env, key, body.contentType, exp);
-  const publicUrl = (env.R2_PUBLIC_BASE_URL || '').replace(/\/+$/, '') + '/' + key;
+  const config = await loadConfig(env);
+  const publicUrl = (config.r2.publicBaseUrl || '').replace(/\/+$/, '') + '/' + key;
   return json({ token, key, publicUrl });
 }
 
@@ -313,7 +301,8 @@ async function handleUpload(req: Request, env: Env): Promise<Response> {
     httpMetadata: { contentType: verified.contentType, cacheControl: 'public, max-age=31536000, immutable' },
   });
 
-  const publicUrl = (env.R2_PUBLIC_BASE_URL || '').replace(/\/+$/, '') + '/' + verified.filename;
+  const config = await loadConfig(env);
+  const publicUrl = (config.r2.publicBaseUrl || '').replace(/\/+$/, '') + '/' + verified.filename;
   return json({ ok: true, key: verified.filename, publicUrl });
 }
 

@@ -8,37 +8,31 @@ compatibility_flags = ["nodejs_compat"]
 directory = "./public"
 binding = "ASSETS"
 
-# Bundle all JSON content into the Worker. Editing content via the admin UI
-# pushes to GitHub, which triggers an automatic redeploy.
+# Bundle JSON content into the Worker as text. Editing content via the admin
+# UI pushes to GitHub, which triggers an automatic redeploy.
 [[rules]]
 type = "Text"
 globs = ["**/*.json"]
 fallthrough = true
 
 # ----------------------------------------------------------------------------
-# Required bindings — configure these in the Cloudflare dashboard before
-# deploying, or via `wrangler secret put` / dashboard variables.
+# Only ONE binding is required to deploy. Everything else is configured
+# at runtime via the /setup wizard.
 # ----------------------------------------------------------------------------
 #
-# Secrets (use `wrangler secret put <NAME>`):
-#   ADMIN_PASSWORD         Password for the /admin login.
-#   ADMIN_SESSION_SECRET   Random string used to sign admin session cookies.
-#   GITHUB_TOKEN           GitHub PAT with `contents:write` on the repo.
-#   R2_UPLOAD_SECRET       Random string used to sign R2 upload requests.
+# Required:
+#   R2_UPLOADS — an R2 bucket used for cover-image uploads AND to store the
+#                runtime config file (_config/runtime.json).
 #
-# Plain variables (set in [vars] or dashboard):
-#   GITHUB_REPO            "owner/repo" the admin commits content to.
-#   GITHUB_BRANCH          Branch to commit to (e.g. "main").
-#   R2_PUBLIC_BASE_URL     Public base URL for the R2 bucket (custom domain).
-#
-# R2 binding:
-#   R2_UPLOADS             Bucket used for cover image uploads.
+# Optional (advanced users only — the /setup wizard is the normal path):
+#   ADMIN_PASSWORD         Bootstrap an admin password without using the wizard.
+#   ADMIN_SESSION_SECRET   Override the auto-generated session-signing secret.
+#   R2_UPLOAD_SECRET       Override the auto-generated upload-signing secret.
+#   GITHUB_TOKEN           GitHub PAT (instead of saving via the wizard).
+#   GITHUB_REPO            "owner/name".
+#   GITHUB_BRANCH          Defaults to "main".
+#   R2_PUBLIC_BASE_URL     R2 bucket's public URL.
 # ----------------------------------------------------------------------------
-
-[vars]
-GITHUB_REPO = ""
-GITHUB_BRANCH = "main"
-R2_PUBLIC_BASE_URL = ""
 
 [[r2_buckets]]
 binding = "R2_UPLOADS"

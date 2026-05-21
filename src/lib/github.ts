@@ -1,4 +1,4 @@
-import type { Env } from '../types';
+import type { RuntimeConfig } from './config';
 
 const API = 'https://api.github.com';
 
@@ -7,12 +7,22 @@ interface GhRequestInit {
   body?: unknown;
 }
 
-async function gh<T>(env: Env, path: string, init: GhRequestInit = {}): Promise<T> {
+export interface GhClient {
+  repo: string;
+  branch: string;
+  token: string;
+}
+
+export function ghClient(config: RuntimeConfig): GhClient {
+  return { repo: config.github.repo, branch: config.github.branch, token: config.github.token };
+}
+
+async function gh<T>(c: GhClient, path: string, init: GhRequestInit = {}): Promise<T> {
   const url = `${API}${path}`;
   const res = await fetch(url, {
     method: init.method ?? 'GET',
     headers: {
-      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${c.token}`,
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       'User-Agent': 'webgame-template/1.0',
@@ -40,18 +50,18 @@ interface GhContent {
 }
 
 export async function getFile(
-  env: Env,
+  c: GhClient,
   filePath: string,
 ): Promise<{ sha: string; text: string } | null> {
-  const ref = encodeURIComponent(env.GITHUB_BRANCH);
+  const ref = encodeURIComponent(c.branch);
   try {
     const data = await gh<GhContent>(
-      env,
-      `/repos/${env.GITHUB_REPO}/contents/${encodeURI(filePath)}?ref=${ref}`,
+      c,
+      `/repos/${c.repo}/contents/${encodeURI(filePath)}?ref=${ref}`,
     );
     if (data.encoding === 'base64' && data.content) {
-      const text = atob(data.content.replace(/\n/g, ''));
-      return { sha: data.sha, text: utf8Decode(text) };
+      const bin = atob(data.content.replace(/\n/g, ''));
+      return { sha: data.sha, text: utf8Decode(bin) };
     }
     return { sha: data.sha, text: '' };
   } catch (e) {
@@ -67,20 +77,19 @@ export interface PutFileInput {
   sha?: string;
 }
 
-export async function putFile(env: Env, input: PutFileInput): Promise<void> {
-  // Look up existing sha if not provided.
+export async function putFile(c: GhClient, input: PutFileInput): Promise<void> {
   let sha = input.sha;
   if (!sha) {
-    const existing = await getFile(env, input.path);
+    const existing = await getFile(c, input.path);
     if (existing) sha = existing.sha;
   }
   const content = utf8Base64(input.text);
-  await gh(env, `/repos/${env.GITHUB_REPO}/contents/${encodeURI(input.path)}`, {
+  await gh(c, `/repos/${c.repo}/contents/${encodeURI(input.path)}`, {
     method: 'PUT',
     body: {
       message: input.message,
       content,
-      branch: env.GITHUB_BRANCH,
+      branch: c.branch,
       ...(sha ? { sha } : {}),
     },
   });
@@ -91,46 +100,37 @@ export interface CommitFile {
   text: string;
 }
 
-/**
- * Commit multiple files in a single commit via the Git Data API.
- * Used when one logical "save" touches both the page detail JSON and the
- * index JSON.
- */
 export async function commitFiles(
-  env: Env,
+  c: GhClient,
   files: CommitFile[],
   message: string,
 ): Promise<void> {
   if (files.length === 0) return;
-  const branch = env.GITHUB_BRANCH;
-  const repo = env.GITHUB_REPO;
+  const branch = c.branch;
+  const repo = c.repo;
 
-  // 1) Get the latest commit on the branch
   const refData = await gh<{ object: { sha: string } }>(
-    env,
+    c,
     `/repos/${repo}/git/ref/heads/${encodeURIComponent(branch)}`,
   );
   const latestCommitSha = refData.object.sha;
 
-  // 2) Get the tree for that commit
   const commitData = await gh<{ tree: { sha: string } }>(
-    env,
+    c,
     `/repos/${repo}/git/commits/${latestCommitSha}`,
   );
   const baseTreeSha = commitData.tree.sha;
 
-  // 3) Create blobs
   const blobs = await Promise.all(
     files.map((f) =>
-      gh<{ sha: string }>(env, `/repos/${repo}/git/blobs`, {
+      gh<{ sha: string }>(c, `/repos/${repo}/git/blobs`, {
         method: 'POST',
         body: { content: utf8Base64(f.text), encoding: 'base64' },
       }),
     ),
   );
 
-  // 4) Create a new tree
-  const treeData = await gh<{ sha: string }>(env, `/repos/${repo}/git/trees`, {
+  const treeData = await gh<{ sha: string }>(c, `/repos/${repo}/git/trees`, {
     method: 'POST',
     body: {
       base_tree: baseTreeSha,
@@ -143,21 +143,46 @@ export async function commitFiles(
     },
   });
 
-  // 5) Create a new commit
-  const newCommit = await gh<{ sha: string }>(env, `/repos/${repo}/git/commits`, {
+  const newCommit = await gh<{ sha: string }>(c, `/repos/${repo}/git/commits`, {
     method: 'POST',
-    body: {
-      message,
-      tree: treeData.sha,
-      parents: [latestCommitSha],
-    },
+    body: { message, tree: treeData.sha, parents: [latestCommitSha] },
   });
 
-  // 6) Move the branch
-  await gh(env, `/repos/${repo}/git/refs/heads/${encodeURIComponent(branch)}`, {
+  await gh(c, `/repos/${repo}/git/refs/heads/${encodeURIComponent(branch)}`, {
     method: 'PATCH',
     body: { sha: newCommit.sha, force: false },
   });
+}
+
+export async function deleteFile(c: GhClient, filePath: string): Promise<void> {
+  const existing = await getFile(c, filePath);
+  if (!existing) return;
+  await gh(c, `/repos/${c.repo}/contents/${encodeURI(filePath)}`, {
+    method: 'DELETE',
+    body: {
+      message: `chore(content): remove file ${filePath}`,
+      sha: existing.sha,
+      branch: c.branch,
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Connection test (used by the setup wizard).
+// ---------------------------------------------------------------------------
+
+export async function testConnection(c: GhClient): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!c.token) return { ok: false, error: 'token is empty' };
+  if (!c.repo || !c.repo.includes('/')) return { ok: false, error: 'repo must be "owner/name"' };
+  try {
+    await gh<{ name: string }>(c, `/repos/${c.repo}`);
+    // Also verify branch exists.
+    await gh(c, `/repos/${c.repo}/git/ref/heads/${encodeURIComponent(c.branch)}`);
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
 }
 
 // ---------------------------------------------------------------------------

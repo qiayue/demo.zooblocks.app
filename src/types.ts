@@ -6,16 +6,16 @@ export interface Env {
   ASSETS: Fetcher;
   R2_UPLOADS: R2Bucket;
 
-  // secrets
-  ADMIN_PASSWORD: string;
-  ADMIN_SESSION_SECRET: string;
-  GITHUB_TOKEN: string;
-  R2_UPLOAD_SECRET: string;
-
-  // vars
-  GITHUB_REPO: string;
-  GITHUB_BRANCH: string;
-  R2_PUBLIC_BASE_URL: string;
+  // All of the following are OPTIONAL — they exist only as a fallback for
+  // power users who prefer to manage configuration via `wrangler secret`.
+  // The normal path is the /setup wizard, which writes config to R2.
+  ADMIN_PASSWORD?: string;
+  ADMIN_SESSION_SECRET?: string;
+  GITHUB_TOKEN?: string;
+  R2_UPLOAD_SECRET?: string;
+  GITHUB_REPO?: string;
+  GITHUB_BRANCH?: string;
+  R2_PUBLIC_BASE_URL?: string;
 }
 
 // ---------------------------------------------------------------------------
