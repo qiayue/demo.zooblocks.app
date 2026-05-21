@@ -28,28 +28,67 @@ A SEO-friendly online game website template, deployable to Cloudflare Workers wi
 
 The default language is served at the root (no `/{lang}` prefix); requesting `/{defaultLang}/...` issues a 301 redirect to the un-prefixed URL.
 
-## How deployment works (≈10 minutes, no coding)
+## How to deploy
 
-1. **Click "Deploy to Cloudflare"** (button below). Cloudflare will:
-   - fork this repository to your own GitHub,
-   - create a new Worker, and
-   - automatically create an R2 bucket named `webgame-uploads`.
+There are two paths. The CLI path is the more reliable one — the Deploy
+button looks easier but currently has a known Cloudflare permission-loop bug
+that's hard to escape.
 
-   You do **not** need to fill any environment variables here — leave everything blank and click deploy.
+### Option A — CLI (recommended)
 
-   [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/qiayue/webgame)
+You need: a Cloudflare account (free is fine), Node.js 18+, and Git.
 
-2. **Open your new Worker URL.** It will redirect you to `/setup` — a wizard that walks you through:
+1. **Fork this repository on GitHub** (one click — the "Fork" button in the
+   top-right of the repo page). This gives you your own copy.
 
-   - **Step 1 — Admin password.** Pick a strong password.
+2. **Clone your fork and run the init script:**
 
-   - **Step 2 — GitHub access.** The wizard tells you exactly how to generate a fine-grained personal access token (PAT) and which repo to point at (it's the fork created in step 1).
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/webgame.git my-game-site
+   cd my-game-site
+   npm install
+   npm run init
+   ```
 
-   - **Step 3 — R2 image URL.** The wizard explains how to enable a public URL on the R2 bucket — either the quick `pub-xxx.r2.dev` URL or a custom subdomain. You only do this **after** the bucket exists, so you can actually copy the URL from the Cloudflare dashboard.
+   The script will:
+   - ask you to name your Worker and R2 bucket;
+   - open a browser for the Cloudflare sign-in (one click);
+   - create the R2 bucket automatically;
+   - build the CSS bundle;
+   - deploy your Worker.
 
-   - **Step 4 — Done.** You're dropped into `/admin` ready to add games.
+   When it finishes, it prints your live URL.
 
-Everything the wizard saves goes into your private R2 bucket (`_config/runtime.json`). Nothing sensitive is committed to GitHub.
+3. **Open the URL.** It redirects you to `/setup` — a wizard that walks you
+   through three steps:
+   - **Admin password.** Pick a strong one.
+   - **GitHub access.** Point at your fork and paste a fine-grained personal
+     access token (the wizard tells you exactly which permissions).
+   - **R2 public URL.** Enable public access on the R2 bucket (`pub-xxx.r2.dev`
+     URL or a custom subdomain) and paste it into the wizard.
+
+   After the wizard you land in `/admin` and can start adding games.
+
+### Option B — Deploy to Cloudflare button
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/qiayue/webgame)
+
+This forks the repo and deploys in the browser. It's lighter on prerequisites
+(no Node, no CLI) but Cloudflare's GitHub App permission flow gets stuck in a
+loop for some accounts. If you see a "重新验证 / Re-verify" dialog that keeps
+re-appearing after you approve it:
+
+1. Open <https://github.com/settings/installations>.
+2. Find **Cloudflare Workers and Pages** → Configure → Uninstall.
+3. Optionally open <https://github.com/settings/applications> and Revoke any
+   Cloudflare entry there too.
+4. Retry the Deploy button in a fresh incognito window.
+
+If that still loops, fall back to Option A.
+
+After the deploy finishes (either path), the `/setup` wizard guides you the
+rest of the way — config goes into a private R2 file (`_config/runtime.json`),
+nothing sensitive is committed to GitHub.
 
 ## Local development
 

@@ -5,6 +5,7 @@
   "description": "A SEO-friendly online game website template, deployable to Cloudflare Workers with one click.",
   "scripts": {
     "dev": "wrangler dev",
+    "init": "node scripts/init.mjs",
     "deploy": "npm run build:css && wrangler deploy",
     "build:css": "tailwindcss -i ./src/styles/input.css -o ./public/assets/app.css --minify",
     "watch:css": "tailwindcss -i ./src/styles/input.css -o ./public/assets/app.css --watch",
