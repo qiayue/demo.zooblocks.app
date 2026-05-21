@@ -97,6 +97,11 @@ async function main() {
     ok(`wrangler.toml already matches: name="${current.name}", bucket="${current.bucketName}".`);
   }
 
+  // Register the git "ours" merge driver so that `npm run sync` (and
+  // standard `git merge upstream/main`) auto-resolves content/ in favour of
+  // the local copy. Idempotent — safe to re-run on every install.
+  spawnSync('git', ['config', 'merge.ours.driver', 'true'], { shell: isWindows });
+
   // ----- Step 3: Cloudflare credentials -----
   step(3, 6, 'Sign in to Cloudflare');
   if (env.CLOUDFLARE_API_TOKEN) {

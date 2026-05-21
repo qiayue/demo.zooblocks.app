@@ -1,54 +1,32 @@
 #!/usr/bin/env node
-// Pull the latest template code from upstream while keeping your site's
-// content and your Cloudflare binding names intact.
+// Pull the latest template code from upstream.
 //
-// What it does:
-//   1. Adds the upstream remote if it isn't there.
-//   2. Fetches upstream.
-//   3. Shows you which files would change and asks for confirmation.
-//   4. Overwrites the "template code" paths from upstream — but does NOT
-//      touch your content/ directory.
-//   5. For wrangler.toml: takes the upstream version but patches in YOUR
-//      `name` and `bucket_name`, so you don't lose your Worker / bucket
-//      configuration.
-//   6. Re-installs npm dependencies in case package.json changed.
-//   7. Tells you to review with `git diff HEAD` and commit / push.
+// Heavy lifting is done by git itself + the .gitattributes file at the
+// repo root, which marks content/** as `merge=ours` so the merge keeps
+// the local version of every user-data file automatically.
 //
-// Files that are NEVER overwritten: content/ (your pages, tags, site
-// config) and anything else not listed in SYNC_PATHS below.
+// This script just makes sure:
+//   1. The upstream remote is configured.
+//   2. The `merge.ours` driver is registered in the local repo.
+//   3. `git pull upstream main` is invoked.
+//
+// If git reports conflicts (usually only wrangler.toml, if the user's
+// name/bucket sit on a line that upstream also touched), the script
+// stops and prints clear guidance.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
-import { createInterface } from 'node:readline';
-import { stdin as input, stdout as output, platform } from 'node:process';
+import { platform } from 'node:process';
 
 const UPSTREAM_URL = 'https://github.com/qiayue/webgame.git';
 const UPSTREAM_BRANCH = 'main';
-
-// Paths to overwrite from upstream. Carefully curated to avoid wiping user
-// data. Add to this list if upstream gains new template files.
-const SYNC_PATHS = [
-  'src',
-  'public/assets/admin.js',
-  'public/assets/setup.js',
-  'public/assets/play.js',
-  'scripts',
-  'package.json',
-  'package-lock.json',
-  'tsconfig.json',
-  'tailwind.config.js',
-  'README.md',
-  'wrangler.toml', // handled specially — see patchWrangler() below
-];
-
 const isWindows = platform === 'win32';
+
 const c = {
   reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
   brand: '\x1b[38;5;99m', green: '\x1b[32m',
   yellow: '\x1b[33m', red: '\x1b[31m', cyan: '\x1b[36m',
 };
 const log = (s = '') => console.log(s);
-const step = (n, total, m) => log(`\n${c.brand}${c.bold}[${n}/${total}]${c.reset} ${m}`);
 const ok = (m) => log(`  ${c.green}✓${c.reset} ${m}`);
 const warn = (m) => log(`  ${c.yellow}!${c.reset} ${m}`);
 const fail = (m) => log(`  ${c.red}✗${c.reset} ${m}`);
@@ -57,139 +35,79 @@ function git(args) {
   const r = spawnSync('git', args, { encoding: 'utf8', shell: isWindows });
   return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
-function gitStreaming(args) {
+function gitStream(args) {
   return new Promise((resolve, reject) => {
     const p = spawn('git', args, { stdio: 'inherit', shell: isWindows });
-    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`git ${args.join(' ')} exited ${code}`))));
+    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`exit ${code}`))));
   });
-}
-
-async function ask(rl, q, def) {
-  return new Promise((r) => rl.question(`${q}${def ? ` ${c.dim}(${def})${c.reset}` : ''} `, (a) => r((a || '').trim() || def || '')));
 }
 
 async function main() {
   log('');
   log(`${c.brand}${c.bold}webgame-template${c.reset} ${c.dim}— sync from upstream${c.reset}`);
   log('');
-  log(`This pulls the latest template code from ${c.cyan}${UPSTREAM_URL}${c.reset}`);
-  log(`while keeping your content/ and your Worker/bucket names intact.`);
-  log('');
 
-  // ----- 1. Inside a git repo? -----
   if (git(['rev-parse', '--git-dir']).status !== 0) {
-    fail('Not inside a git repository. Run this from your site\'s root.');
+    fail("Not inside a git repository. Run this from your site's root.");
     process.exit(1);
   }
 
-  // ----- 2. Working tree clean? -----
-  step(1, 5, 'Checking working tree');
-  const status = git(['status', '--porcelain']).stdout.trim();
-  if (status) {
+  const dirty = git(['status', '--porcelain']).stdout.trim();
+  if (dirty) {
     fail('You have uncommitted changes:');
-    log(status.split('\n').map((l) => `    ${l}`).join('\n'));
+    log(dirty.split('\n').map((l) => `    ${l}`).join('\n'));
     log('');
     log('Commit or stash them first, then re-run this command.');
     process.exit(1);
   }
-  ok('Clean.');
 
-  // ----- 3. Ensure upstream remote -----
-  step(2, 5, 'Ensure upstream remote');
+  // Register the "ours" merge driver locally. Idempotent — safe to re-run.
+  git(['config', 'merge.ours.driver', 'true']);
+
+  // Ensure upstream remote.
   const remotes = git(['remote']).stdout.split('\n').map((s) => s.trim()).filter(Boolean);
   if (!remotes.includes('upstream')) {
     const add = git(['remote', 'add', 'upstream', UPSTREAM_URL]);
-    if (add.status !== 0) { fail('Failed to add remote: ' + add.stderr); process.exit(1); }
+    if (add.status !== 0) { fail('Failed to add upstream: ' + add.stderr); process.exit(1); }
     ok(`Added upstream → ${UPSTREAM_URL}`);
   } else {
-    const url = git(['remote', 'get-url', 'upstream']).stdout.trim();
-    ok(`upstream → ${url}`);
+    ok(`upstream → ${git(['remote', 'get-url', 'upstream']).stdout.trim()}`);
   }
 
-  // ----- 4. Fetch -----
-  step(3, 5, 'Fetch upstream');
+  log('');
+  log(`Pulling ${c.cyan}upstream/${UPSTREAM_BRANCH}${c.reset}…`);
+  log('');
+
   try {
-    await gitStreaming(['fetch', '--no-tags', 'upstream', UPSTREAM_BRANCH]);
+    await gitStream(['pull', '--no-rebase', '--no-edit', 'upstream', UPSTREAM_BRANCH]);
   } catch {
-    fail('Fetch failed. Check your network / SSH access to GitHub.');
+    log('');
+    const conflicts = git(['diff', '--name-only', '--diff-filter=U']).stdout.trim();
+    if (conflicts) {
+      fail('Merge conflicts:');
+      log(conflicts.split('\n').map((l) => `    ${c.yellow}${l}${c.reset}`).join('\n'));
+      log('');
+      log(`${c.bold}How to resolve:${c.reset}`);
+      log(`  - For ${c.cyan}wrangler.toml${c.reset}: keep your own ${c.bold}name${c.reset} and ${c.bold}bucket_name${c.reset};`);
+      log(`    accept upstream for everything else. Open the file, find the`);
+      log(`    "<<<<<<< / ======= / >>>>>>>" markers, and edit by hand.`);
+      log(`  - When done: ${c.cyan}git add <file>${c.reset} then ${c.cyan}git commit${c.reset}.`);
+      log(`  - To bail out and leave things untouched: ${c.cyan}git merge --abort${c.reset}.`);
+    } else {
+      fail('Pull failed. Check the error above (network? auth?).');
+    }
     process.exit(1);
   }
 
-  // ----- 5. Show what would change -----
-  step(4, 5, 'See what would change');
-  const summary = git(['diff', '--stat', `upstream/${UPSTREAM_BRANCH}`, 'HEAD', '--', ...SYNC_PATHS]).stdout;
-  if (!summary.trim()) {
-    ok('Nothing to sync — already up to date.');
-    return;
-  }
-  log(summary.split('\n').map((l) => `  ${l}`).join('\n'));
-
-  const rl = createInterface({ input, output });
-  const answer = await ask(rl, `Apply these changes?`, 'y/N');
-  rl.close();
-  if (!/^y(es)?$/i.test(answer)) {
-    log('Aborted. Nothing changed.');
-    return;
-  }
-
-  // ----- 6. Save user's wrangler config before overwriting -----
-  let localName, localBucket;
-  try {
-    const localToml = await readFile('wrangler.toml', 'utf8');
-    localName = localToml.match(/^name\s*=\s*"([^"]*)"/m)?.[1];
-    localBucket = localToml.match(/(?:\[\[r2_buckets\]\][^\[]*?)bucket_name\s*=\s*"([^"]*)"/s)?.[1];
-  } catch {
-    // No local wrangler.toml — odd but not fatal.
-  }
-
-  // ----- 7. Apply: checkout each path from upstream -----
-  step(5, 5, 'Apply changes');
-  for (const p of SYNC_PATHS) {
-    const r = git(['checkout', `upstream/${UPSTREAM_BRANCH}`, '--', p]);
-    if (r.status !== 0) {
-      // If the path doesn't exist upstream we can ignore; otherwise it's an error.
-      if (/did not match any file/i.test(r.stderr)) {
-        warn(`upstream has no ${p} — skipped`);
-      } else {
-        fail(`checkout failed for ${p}: ${r.stderr.trim()}`);
-        process.exit(1);
-      }
-    }
-  }
-
-  // ----- 8. Patch wrangler.toml: restore the user's name and bucket -----
-  if (localName || localBucket) {
-    try {
-      let toml = await readFile('wrangler.toml', 'utf8');
-      if (localName) {
-        toml = toml.replace(/^name\s*=\s*"[^"]*"/m, `name = "${localName}"`);
-      }
-      if (localBucket) {
-        toml = toml.replace(
-          /(\[\[r2_buckets\]\][^\[]*?bucket_name\s*=\s*)"[^"]*"/s,
-          `$1"${localBucket}"`,
-        );
-      }
-      await writeFile('wrangler.toml', toml);
-      ok(`wrangler.toml: restored name="${localName ?? '?'}", bucket="${localBucket ?? '?'}".`);
-    } catch (e) {
-      warn(`Couldn't patch wrangler.toml: ${e.message}. Check it manually.`);
-    }
-  }
-
-  // Stage the updates so the user sees a clean diff against HEAD.
-  git(['add', '--', ...SYNC_PATHS]);
-
   log('');
-  ok('Template files updated and staged.');
+  ok('Sync complete.');
   log('');
   log(`${c.bold}Next steps:${c.reset}`);
   log(`  1. Run ${c.cyan}npm install${c.reset} (in case dependencies changed).`);
-  log(`  2. Review with ${c.cyan}git diff --staged${c.reset}.`);
-  log(`  3. Commit: ${c.cyan}git commit -m "chore: sync template from upstream"${c.reset}`);
-  log(`  4. Push: ${c.cyan}git push${c.reset}  (Cloudflare will redeploy automatically.)`);
+  log(`  2. Push: ${c.cyan}git push${c.reset}  (Cloudflare will redeploy automatically.)`);
   log('');
-  log(`${c.dim}Your content/ directory was NOT touched.${c.reset}`);
+  log(`${c.dim}Your content/ directory wasn't touched — the .gitattributes`);
+  log(`merge rule keeps the local version of every file under content/.${c.reset}`);
 }
 
 main().catch((err) => {
