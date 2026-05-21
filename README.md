@@ -38,13 +38,17 @@ that's hard to escape.
 
 You need: a Cloudflare account (free is fine), Node.js 18+, and Git.
 
-1. **Fork this repository on GitHub** (one click — the "Fork" button in the
-   top-right of the repo page). This gives you your own copy.
+1. **Create your own copy on GitHub**: open this repository's page and click
+   **Use this template → Create a new repository**. (If "Use this template"
+   isn't visible, click **Fork** instead. Both work; Template is cleaner
+   because it doesn't leave a "forked from" marker.) Note: you cannot fork
+   your own repo, so Template is the only path if you're the upstream owner
+   yourself.
 
-2. **Clone your fork and run the init script:**
+2. **Clone your new repo and run the init script:**
 
    ```bash
-   git clone https://github.com/YOUR-USERNAME/webgame.git my-game-site
+   git clone https://github.com/YOUR-USERNAME/your-new-repo.git my-game-site
    cd my-game-site
    npm install
    npm run init
@@ -52,18 +56,34 @@ You need: a Cloudflare account (free is fine), Node.js 18+, and Git.
 
    The script will:
    - ask you to name your Worker and R2 bucket;
-   - open a browser for the Cloudflare sign-in (one click);
+   - sign in to Cloudflare (browser-based OAuth — or use an API token; see
+     below);
    - create the R2 bucket automatically;
    - build the CSS bundle;
    - deploy your Worker.
 
    When it finishes, it prints your live URL.
 
+   **If `wrangler login` times out** (common on networks where the Cloudflare
+   API is slow or filtered, including mainland China), bypass OAuth by using
+   an API token instead:
+
+   1. Open <https://dash.cloudflare.com/profile/api-tokens> (use a proxy/VPN
+      if the dashboard itself doesn't load).
+   2. **Create Token** → use the **"Edit Cloudflare Workers"** template.
+   3. Under Permissions, add: **Account → Workers R2 Storage → Edit**.
+   4. Continue → Create Token → copy it.
+   5. Re-run with the token in the environment:
+
+      ```bash
+      CLOUDFLARE_API_TOKEN=your-token-here npm run init
+      ```
+
 3. **Open the URL.** It redirects you to `/setup` — a wizard that walks you
    through three steps:
    - **Admin password.** Pick a strong one.
-   - **GitHub access.** Point at your fork and paste a fine-grained personal
-     access token (the wizard tells you exactly which permissions).
+   - **GitHub access.** Point at your new repo and paste a fine-grained
+     personal access token (the wizard tells you exactly which permissions).
    - **R2 public URL.** Enable public access on the R2 bucket (`pub-xxx.r2.dev`
      URL or a custom subdomain) and paste it into the wizard.
 

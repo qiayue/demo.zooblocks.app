@@ -1,21 +1,22 @@
 #!/usr/bin/env node
-// One-step deployment helper. Runs after the user has cloned their fork.
+// One-step deployment helper. Runs after the user has cloned their repo
+// (either from "Use this template" or a fork).
 //
 // What it does, in order:
 //   1. Asks the user for a Worker name and an R2 bucket name.
 //   2. Updates wrangler.toml in place.
-//   3. Ensures `wrangler login` has been run (opens a browser once).
+//   3. Ensures Cloudflare credentials are available (API token preferred;
+//      falls back to `wrangler login` OAuth, with clear recovery hints if
+//      OAuth fails — common in restrictive networks).
 //   4. Creates the R2 bucket (ignores "already exists").
 //   5. Builds the Tailwind CSS bundle.
 //   6. Runs `wrangler deploy`.
 //   7. Prints the deployed URL and tells the user where to go next.
-//
-// Aborts cleanly on Ctrl-C. Safe to re-run.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
-import { stdin as input, stdout as output, platform } from 'node:process';
+import { stdin as input, stdout as output, platform, env } from 'node:process';
 
 const isWindows = platform === 'win32';
 
@@ -41,8 +42,9 @@ async function main() {
   log(`${c.brand}${c.bold}webgame-template${c.reset} ${c.dim}— one-step deploy${c.reset}`);
   log('');
   log(`This will deploy this site to your own Cloudflare account. About 3 minutes.`);
-  log(`You'll need a Cloudflare account (free tier is fine). The script will open a browser`);
-  log(`for the Cloudflare login. Nothing leaves your machine except the deploy itself.`);
+  log(`The script can sign in via OAuth (opens a browser) or use a Cloudflare`);
+  log(`API token. If you're on a network where Cloudflare's API is slow or blocked`);
+  log(`(common in some regions), the API-token path is more reliable.`);
   log('');
 
   const rl = createInterface({ input, output });
@@ -74,24 +76,60 @@ async function main() {
     fail('wrangler.toml not found. Run this script from the project root.');
     process.exit(1);
   }
+  const current = readTomlValues(toml);
   const nextToml = toml
     .replace(/^name\s*=\s*".*"/m, `name = "${workerName}"`)
     .replace(/(\[\[r2_buckets\]\][^\[]*?bucket_name\s*=\s*)"[^"]*"/s, `$1"${bucketName}"`);
-  if (nextToml === toml) warn('wrangler.toml unchanged (already up to date).');
-  else {
+  const after = readTomlValues(nextToml);
+
+  if (after.name !== workerName) {
+    fail(`Couldn't find "name = \"...\"" line in wrangler.toml — please edit it manually.`);
+    process.exit(1);
+  }
+  if (after.bucketName !== bucketName) {
+    fail(`Couldn't find bucket_name under [[r2_buckets]] in wrangler.toml — please edit it manually.`);
+    process.exit(1);
+  }
+  if (nextToml !== toml) {
     await writeFile(tomlPath, nextToml);
     ok(`wrangler.toml: name="${workerName}", bucket="${bucketName}".`);
+  } else {
+    ok(`wrangler.toml already matches: name="${current.name}", bucket="${current.bucketName}".`);
   }
 
-  // ----- Step 3: wrangler login -----
+  // ----- Step 3: Cloudflare credentials -----
   step(3, 6, 'Sign in to Cloudflare');
-  const whoami = spawnSync('npx', ['wrangler', 'whoami'], { encoding: 'utf8', shell: isWindows });
-  if (whoami.status === 0 && /You are logged in/i.test(whoami.stdout || '')) {
-    ok('Already signed in.');
+  if (env.CLOUDFLARE_API_TOKEN) {
+    ok('Using CLOUDFLARE_API_TOKEN from environment.');
   } else {
-    log(`  Opening browser for Cloudflare sign-in…`);
-    await runStreaming('npx', ['wrangler', 'login']);
-    ok('Signed in.');
+    const whoami = spawnSync('npx', ['wrangler', 'whoami'], { encoding: 'utf8', shell: isWindows });
+    const isLoggedIn = whoami.status === 0 && /You are logged in/i.test(whoami.stdout || '');
+    if (isLoggedIn) {
+      ok('Already signed in.');
+    } else {
+      log(`  Opening browser for Cloudflare sign-in…`);
+      log(`  ${c.dim}(If this hangs or times out — common in restrictive networks —`);
+      log(`   cancel with Ctrl-C and follow the API-token instructions printed below.)${c.reset}`);
+      try {
+        await runStreaming('npx', ['wrangler', 'login']);
+        ok('Signed in.');
+      } catch {
+        log('');
+        fail(`OAuth login failed. This is usually a network issue (Cloudflare API unreachable).`);
+        log('');
+        log(`${c.bold}Try the API-token path instead:${c.reset}`);
+        log(`  1. Open ${c.cyan}https://dash.cloudflare.com/profile/api-tokens${c.reset}`);
+        log(`     (use a VPN/proxy if needed — only this initial step needs network access to CF).`);
+        log(`  2. Create Token → use the ${c.bold}"Edit Cloudflare Workers"${c.reset} template.`);
+        log(`  3. Under Permissions, add: ${c.bold}Account → Workers R2 Storage → Edit${c.reset}.`);
+        log(`  4. Continue → Create Token → copy the token.`);
+        log(`  5. Re-run this script with the token:`);
+        log('');
+        log(`     ${c.cyan}CLOUDFLARE_API_TOKEN=your-token-here npm run init${c.reset}`);
+        log('');
+        process.exit(1);
+      }
+    }
   }
 
   // ----- Step 4: create R2 bucket -----
@@ -121,16 +159,21 @@ async function main() {
   log('');
   log(`${c.green}${c.bold}✓ Deployed!${c.reset}`);
   log('');
-  log(`Your Worker is live at:`);
-  log(`  ${c.cyan}https://${workerName}.<your-cf-subdomain>.workers.dev${c.reset}`);
-  log(`(The exact URL appears just above this message.)`);
+  log(`Your Worker is live. Look for the "https://${workerName}.<...>.workers.dev"`);
+  log(`URL printed just above this message.`);
   log('');
   log(`${c.bold}What to do next:${c.reset}`);
-  log(`  1. Open the URL above. You'll be redirected to ${c.cyan}/setup${c.reset}.`);
+  log(`  1. Open that URL. You'll be redirected to ${c.cyan}/setup${c.reset}.`);
   log(`  2. Walk through the wizard: admin password → GitHub token → R2 public URL.`);
   log(`  3. After the wizard you land at ${c.cyan}/admin${c.reset} and can add games.`);
   log('');
-  log(`${c.dim}Tip: if you change wrangler.toml later, run \`npm run deploy\` to redeploy.${c.reset}`);
+  log(`${c.dim}Tip: re-run \`npm run deploy\` whenever you want to push code changes.${c.reset}`);
+}
+
+function readTomlValues(toml) {
+  const nameMatch = toml.match(/^name\s*=\s*"([^"]*)"/m);
+  const bucketMatch = toml.match(/(?:\[\[r2_buckets\]\][^\[]*?)bucket_name\s*=\s*"([^"]*)"/s);
+  return { name: nameMatch?.[1], bucketName: bucketMatch?.[1] };
 }
 
 function runStreaming(cmd, args) {
