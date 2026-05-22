@@ -1,26 +1,31 @@
 #!/usr/bin/env node
-// Pull the latest template code from upstream.
+// Pull the latest template code from upstream — without using `git merge`.
 //
-// Heavy lifting is done by git itself + the .gitattributes file at the
-// repo root, which marks content/** as `merge=ours` so the merge keeps
-// the local version of every user-data file automatically.
+// Why not `git merge`?  "Use this template" creates a new GitHub repo with
+// no common history with the upstream template, so `git merge` refuses
+// with "refusing to merge unrelated histories". Even with
+// --allow-unrelated-histories the resulting merge generates avoidable
+// conflicts on every file that drifted between the two trees.
 //
-// This script just makes sure:
-//   1. The upstream remote is configured.
-//   2. The `merge.ours` driver is registered in the local repo.
-//   3. `git pull upstream main` is invoked.
+// Instead, this script does a content-level sync:
 //
-// If git reports conflicts (usually only wrangler.toml, if the user's
-// name/bucket sit on a line that upstream also touched), the script
-// stops and prints clear guidance.
+//   1. Fetches upstream.
+//   2. Diffs the local tree against `upstream/main` and lists every file
+//      that differs.
+//   3. For each file:
+//      - Skip everything under content/* (user data).
+//      - For wrangler.toml: take upstream's version, then patch in the
+//        local `name`, `bucket_name`, and `account_id` (your deployment
+//        configuration survives).
+//      - Otherwise: replace local with upstream's version.
+//   4. Stages all changes; the user reviews with `git diff --staged`
+//      and commits.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { platform, env } from 'node:process';
+import { readFile, writeFile } from 'node:fs/promises';
+import { createInterface } from 'node:readline';
+import { stdin as input, stdout as output, platform, env } from 'node:process';
 
-// Repo the template lives in. We let the URL be overridden via env (useful
-// for mirrors / forks) and we auto-pick HTTPS vs SSH based on what the
-// user's `origin` is already using — that way someone whose origin works
-// over SSH gets SSH for upstream too, dodging flaky HTTPS connections.
 const UPSTREAM_REPO = 'qiayue/webgame';
 const UPSTREAM_BRANCH = 'main';
 const isWindows = platform === 'win32';
@@ -56,6 +61,7 @@ async function main() {
     process.exit(1);
   }
 
+  // Working tree must be clean — otherwise we can't safely overwrite files.
   const dirty = git(['status', '--porcelain']).stdout.trim();
   if (dirty) {
     fail('You have uncommitted changes:');
@@ -65,18 +71,8 @@ async function main() {
     process.exit(1);
   }
 
-  // Register the "ours" merge driver locally. Idempotent — safe to re-run.
-  git(['config', 'merge.ours.driver', 'true']);
-
-  // Decide which URL we'd want for upstream:
-  //   1. WEBGAME_UPSTREAM_URL env var wins.
-  //   2. Otherwise match the protocol the user's `origin` uses.
-  //   3. Fall back to HTTPS.
+  // Ensure upstream remote, with a URL that matches origin's protocol.
   const upstreamUrl = resolveUpstreamUrl();
-
-  // Ensure upstream remote exists and points at the right place. If the user
-  // (or an older version of this script) already added it with a different
-  // URL, rewrite it — saves them a manual `git remote set-url`.
   const remotes = git(['remote']).stdout.split('\n').map((s) => s.trim()).filter(Boolean);
   if (!remotes.includes('upstream')) {
     const add = git(['remote', 'add', 'upstream', upstreamUrl]);
@@ -93,51 +89,166 @@ async function main() {
   }
 
   log('');
-  log(`Pulling ${c.cyan}upstream/${UPSTREAM_BRANCH}${c.reset}…`);
-  log('');
-
+  log(`Fetching ${c.cyan}upstream/${UPSTREAM_BRANCH}${c.reset}…`);
   try {
-    await gitStream(['pull', '--no-rebase', '--no-edit', 'upstream', UPSTREAM_BRANCH]);
+    await gitStream(['fetch', '--no-tags', 'upstream', UPSTREAM_BRANCH]);
   } catch {
     log('');
-    const conflicts = git(['diff', '--name-only', '--diff-filter=U']).stdout.trim();
-    if (conflicts) {
-      fail('Merge conflicts:');
-      log(conflicts.split('\n').map((l) => `    ${c.yellow}${l}${c.reset}`).join('\n'));
-      log('');
-      log(`${c.bold}How to resolve:${c.reset}`);
-      log(`  - For ${c.cyan}wrangler.toml${c.reset}: keep your own ${c.bold}name${c.reset} and ${c.bold}bucket_name${c.reset};`);
-      log(`    accept upstream for everything else. Open the file, find the`);
-      log(`    "<<<<<<< / ======= / >>>>>>>" markers, and edit by hand.`);
-      log(`  - When done: ${c.cyan}git add <file>${c.reset} then ${c.cyan}git commit${c.reset}.`);
-      log(`  - To bail out and leave things untouched: ${c.cyan}git merge --abort${c.reset}.`);
-    } else {
-      fail('Pull failed. Check the error above.');
-      log('');
-      log(`If this is a network problem reaching GitHub over HTTPS (common in`);
-      log(`some regions — symptoms include "HTTP2 framing layer" or timeouts):`);
-      log(`  - Switch upstream to SSH: ${c.cyan}git remote set-url upstream git@github.com:${UPSTREAM_REPO}.git${c.reset}`);
-      log(`  - Or force HTTP/1.1: ${c.cyan}git config --global http.version HTTP/1.1${c.reset}`);
-      log(`  - Or use a proxy: ${c.cyan}git config --global http.https://github.com.proxy http://127.0.0.1:7890${c.reset}`);
-      log(`Then re-run ${c.cyan}npm run sync${c.reset}.`);
-    }
+    fail('Fetch failed. Check the error above.');
+    log('');
+    log(`If this is a network problem reaching GitHub over HTTPS (common in`);
+    log(`some regions — symptoms include "HTTP2 framing layer" or timeouts):`);
+    log(`  - Switch upstream to SSH: ${c.cyan}git remote set-url upstream git@github.com:${UPSTREAM_REPO}.git${c.reset}`);
+    log(`  - Or force HTTP/1.1: ${c.cyan}git config --global http.version HTTP/1.1${c.reset}`);
+    log(`  - Or use a proxy: ${c.cyan}git config --global http.https://github.com.proxy http://127.0.0.1:7890${c.reset}`);
     process.exit(1);
   }
 
+  // Diff local against upstream. Each entry is "<status>\t<path>".
+  const diffOutput = git(['diff', '--name-status', 'HEAD', `upstream/${UPSTREAM_BRANCH}`]).stdout.trim();
+  if (!diffOutput) {
+    log('');
+    ok('Nothing to sync — already up to date.');
+    return;
+  }
+
+  const toUpdate = [];     // files we'll overwrite from upstream
+  const toRemove = [];     // files upstream deleted
+  let wranglerNeedsMerge = false;
+
+  for (const line of diffOutput.split('\n')) {
+    const [status, ...rest] = line.split('\t');
+    const path = rest.join('\t');
+    if (!path) continue;
+    if (path.startsWith('content/')) continue;            // user data — never touch
+    if (path === 'wrangler.toml') { wranglerNeedsMerge = true; continue; }
+    if (status.startsWith('D')) toRemove.push(path);      // exists locally, gone in upstream
+    else toUpdate.push(path);                              // A or M
+  }
+
+  if (!toUpdate.length && !toRemove.length && !wranglerNeedsMerge) {
+    log('');
+    ok('Nothing to sync — only content/ differs, and that\'s yours to keep.');
+    return;
+  }
+
   log('');
-  ok('Sync complete.');
+  log(`${c.bold}Changes from upstream:${c.reset}`);
+  toUpdate.forEach((f) => log(`  ${c.green}+${c.reset} ${f}`));
+  toRemove.forEach((f) => log(`  ${c.red}-${c.reset} ${f}`));
+  if (wranglerNeedsMerge) log(`  ${c.brand}~${c.reset} wrangler.toml ${c.dim}(your name/bucket/account_id will be preserved)${c.reset}`);
+  log('');
+
+  const rl = createInterface({ input, output });
+  const answer = await new Promise((r) =>
+    rl.question(`  Apply? ${c.dim}(y/N)${c.reset} `, (a) => r((a || '').trim())),
+  );
+  rl.close();
+  if (!/^y(es)?$/i.test(answer)) {
+    log('Aborted. Nothing changed.');
+    return;
+  }
+
+  // Apply.
+  for (const f of toUpdate) {
+    const r = git(['checkout', `upstream/${UPSTREAM_BRANCH}`, '--', f]);
+    if (r.status !== 0) {
+      fail(`Failed to checkout ${f}: ${r.stderr.trim()}`);
+      process.exit(1);
+    }
+  }
+  for (const f of toRemove) {
+    // Only remove files we're confident the user didn't add themselves. In
+    // practice deletions in src/, public/assets/, scripts/, etc. are safe;
+    // for anything outside known template paths we leave it as-is to avoid
+    // accidentally wiping user files.
+    if (looksLikeTemplatePath(f)) {
+      git(['rm', '-q', '--', f]);
+    } else {
+      warn(`Upstream deleted ${f}, but it's outside known template paths — kept it. Delete by hand if you want.`);
+    }
+  }
+
+  if (wranglerNeedsMerge) {
+    await smartMergeWrangler();
+  }
+
+  // Stage everything so the user sees a clean diff against HEAD.
+  git(['add', '-A']);
+
+  log('');
+  ok('Files updated and staged.');
   log('');
   log(`${c.bold}Next steps:${c.reset}`);
   log(`  1. Run ${c.cyan}npm install${c.reset} (in case dependencies changed).`);
-  log(`  2. Push: ${c.cyan}git push${c.reset}  (Cloudflare will redeploy automatically.)`);
+  log(`  2. Review with ${c.cyan}git diff --staged${c.reset}.`);
+  log(`  3. Commit: ${c.cyan}git commit -m "chore: sync template from upstream"${c.reset}`);
+  log(`  4. Push: ${c.cyan}git push${c.reset}  (Cloudflare will redeploy automatically.)`);
   log('');
-  log(`${c.dim}Your content/ directory wasn't touched — the .gitattributes`);
-  log(`merge rule keeps the local version of every file under content/.${c.reset}`);
+  log(`${c.dim}Your content/ directory wasn't touched.${c.reset}`);
+}
+
+function looksLikeTemplatePath(p) {
+  return (
+    p.startsWith('src/') ||
+    p.startsWith('public/assets/') ||
+    p.startsWith('scripts/') ||
+    p === '.gitattributes' ||
+    p === 'tsconfig.json' ||
+    p === 'tailwind.config.js' ||
+    p === 'package-lock.json'
+  );
+}
+
+async function smartMergeWrangler() {
+  const tomlPath = 'wrangler.toml';
+  let localToml;
+  try {
+    localToml = await readFile(tomlPath, 'utf8');
+  } catch {
+    // No local wrangler.toml — just take upstream's wholesale.
+    git(['checkout', `upstream/${UPSTREAM_BRANCH}`, '--', tomlPath]);
+    return;
+  }
+
+  const name = matchOne(localToml, /^name\s*=\s*"([^"]*)"/m);
+  const bucket = matchOne(localToml, /(?:\[\[r2_buckets\]\][^\[]*?)bucket_name\s*=\s*"([^"]*)"/s);
+  const accountId = matchOne(localToml, /^account_id\s*=\s*"([^"]*)"/m);
+
+  const r = git(['checkout', `upstream/${UPSTREAM_BRANCH}`, '--', tomlPath]);
+  if (r.status !== 0) { fail('Failed to checkout wrangler.toml from upstream.'); process.exit(1); }
+
+  let next = await readFile(tomlPath, 'utf8');
+  if (name) next = next.replace(/^name\s*=\s*"[^"]*"/m, `name = "${name}"`);
+  if (bucket) {
+    next = next.replace(
+      /(\[\[r2_buckets\]\][^\[]*?bucket_name\s*=\s*)"[^"]*"/s,
+      `$1"${bucket}"`,
+    );
+  }
+  if (accountId) {
+    if (/^account_id\s*=/m.test(next)) {
+      next = next.replace(/^account_id\s*=\s*"[^"]*"/m, `account_id = "${accountId}"`);
+    } else {
+      // Anchor on the `main = "..."` line for a stable position.
+      const inserted = next.replace(
+        /^(main\s*=\s*"[^"]*"\n)/m,
+        `$1account_id = "${accountId}"\n`,
+      );
+      next = inserted !== next ? inserted : `account_id = "${accountId}"\n${next}`;
+    }
+  }
+  await writeFile(tomlPath, next);
+  ok(`wrangler.toml: kept name="${name ?? '?'}", bucket="${bucket ?? '?'}", account_id="${accountId ?? '(none)'}"`);
+}
+
+function matchOne(text, re) {
+  const m = text.match(re);
+  return m ? m[1] : undefined;
 }
 
 function resolveUpstreamUrl() {
   if (env.WEBGAME_UPSTREAM_URL) return env.WEBGAME_UPSTREAM_URL;
-  // Inspect the user's origin remote to decide HTTPS vs SSH.
   const origin = git(['remote', 'get-url', 'origin']).stdout.trim();
   if (/^git@/.test(origin) || /^ssh:\/\//.test(origin)) {
     return `git@github.com:${UPSTREAM_REPO}.git`;
