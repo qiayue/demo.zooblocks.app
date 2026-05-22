@@ -1,5 +1,6 @@
-name = "webgame-template"
+name = "demogamesite"
 main = "src/worker.ts"
+account_id = "55c26e04f655177fd0b0cd1be8dfb8b0"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -36,4 +37,4 @@ fallthrough = true
 
 [[r2_buckets]]
 binding = "R2_UPLOADS"
-bucket_name = "webgame-uploads"
+bucket_name = "demogamer2"
