@@ -118,21 +118,19 @@ When upstream pushes a bug fix or new feature, pull it into your site with:
 npm run sync
 ```
 
-This is a thin wrapper around `git pull upstream main`. The repository
-ships with a `.gitattributes` rule (`content/** merge=ours`) and the
-`init` / `sync` scripts register git's `merge.ours` driver, so the
-merge automatically keeps **your** version of every file under
-`content/` — no matter what upstream did. No hard-coded path list to
-maintain; new template files just get merged in normally.
+The sync script does NOT use `git merge` — that breaks for repositories
+created via "Use this template" because the two histories share no
+common commit. Instead it compares files between your repo and
+`upstream/main` and overwrites the ones that differ, with two
+protections built in:
 
-The only file that occasionally conflicts is `wrangler.toml`, when
-upstream edits the same lines as your `name` / `bucket_name`. If that
-happens, the script tells you exactly what to do: open the file, keep
-your own `name` and `bucket_name`, accept upstream for the rest, then
-`git add` + `git commit`.
+- Files under `content/` are never touched — that's your data.
+- `wrangler.toml` is taken from upstream, but your local `name`,
+  `bucket_name`, and `account_id` are patched back in afterwards.
 
-After a successful sync: run `npm install` (in case dependencies
-changed) and `git push`. Cloudflare will redeploy automatically.
+You stay on your own commit history; the sync just produces a normal
+"chore: sync template" commit. After running it: `npm install`,
+`git diff --staged` to review, then commit and push.
 
 ## Local development
 
