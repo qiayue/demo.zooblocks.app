@@ -15,9 +15,13 @@
 // stops and prints clear guidance.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { platform } from 'node:process';
+import { platform, env } from 'node:process';
 
-const UPSTREAM_URL = 'https://github.com/qiayue/webgame.git';
+// Repo the template lives in. We let the URL be overridden via env (useful
+// for mirrors / forks) and we auto-pick HTTPS vs SSH based on what the
+// user's `origin` is already using — that way someone whose origin works
+// over SSH gets SSH for upstream too, dodging flaky HTTPS connections.
+const UPSTREAM_REPO = 'qiayue/webgame';
 const UPSTREAM_BRANCH = 'main';
 const isWindows = platform === 'win32';
 
@@ -64,14 +68,28 @@ async function main() {
   // Register the "ours" merge driver locally. Idempotent — safe to re-run.
   git(['config', 'merge.ours.driver', 'true']);
 
-  // Ensure upstream remote.
+  // Decide which URL we'd want for upstream:
+  //   1. WEBGAME_UPSTREAM_URL env var wins.
+  //   2. Otherwise match the protocol the user's `origin` uses.
+  //   3. Fall back to HTTPS.
+  const upstreamUrl = resolveUpstreamUrl();
+
+  // Ensure upstream remote exists and points at the right place. If the user
+  // (or an older version of this script) already added it with a different
+  // URL, rewrite it — saves them a manual `git remote set-url`.
   const remotes = git(['remote']).stdout.split('\n').map((s) => s.trim()).filter(Boolean);
   if (!remotes.includes('upstream')) {
-    const add = git(['remote', 'add', 'upstream', UPSTREAM_URL]);
+    const add = git(['remote', 'add', 'upstream', upstreamUrl]);
     if (add.status !== 0) { fail('Failed to add upstream: ' + add.stderr); process.exit(1); }
-    ok(`Added upstream → ${UPSTREAM_URL}`);
+    ok(`Added upstream → ${upstreamUrl}`);
   } else {
-    ok(`upstream → ${git(['remote', 'get-url', 'upstream']).stdout.trim()}`);
+    const current = git(['remote', 'get-url', 'upstream']).stdout.trim();
+    if (current !== upstreamUrl) {
+      git(['remote', 'set-url', 'upstream', upstreamUrl]);
+      ok(`upstream URL updated → ${upstreamUrl}`);
+    } else {
+      ok(`upstream → ${current}`);
+    }
   }
 
   log('');
@@ -94,7 +112,14 @@ async function main() {
       log(`  - When done: ${c.cyan}git add <file>${c.reset} then ${c.cyan}git commit${c.reset}.`);
       log(`  - To bail out and leave things untouched: ${c.cyan}git merge --abort${c.reset}.`);
     } else {
-      fail('Pull failed. Check the error above (network? auth?).');
+      fail('Pull failed. Check the error above.');
+      log('');
+      log(`If this is a network problem reaching GitHub over HTTPS (common in`);
+      log(`some regions — symptoms include "HTTP2 framing layer" or timeouts):`);
+      log(`  - Switch upstream to SSH: ${c.cyan}git remote set-url upstream git@github.com:${UPSTREAM_REPO}.git${c.reset}`);
+      log(`  - Or force HTTP/1.1: ${c.cyan}git config --global http.version HTTP/1.1${c.reset}`);
+      log(`  - Or use a proxy: ${c.cyan}git config --global http.https://github.com.proxy http://127.0.0.1:7890${c.reset}`);
+      log(`Then re-run ${c.cyan}npm run sync${c.reset}.`);
     }
     process.exit(1);
   }
@@ -108,6 +133,16 @@ async function main() {
   log('');
   log(`${c.dim}Your content/ directory wasn't touched — the .gitattributes`);
   log(`merge rule keeps the local version of every file under content/.${c.reset}`);
+}
+
+function resolveUpstreamUrl() {
+  if (env.WEBGAME_UPSTREAM_URL) return env.WEBGAME_UPSTREAM_URL;
+  // Inspect the user's origin remote to decide HTTPS vs SSH.
+  const origin = git(['remote', 'get-url', 'origin']).stdout.trim();
+  if (/^git@/.test(origin) || /^ssh:\/\//.test(origin)) {
+    return `git@github.com:${UPSTREAM_REPO}.git`;
+  }
+  return `https://github.com/${UPSTREAM_REPO}.git`;
 }
 
 main().catch((err) => {
