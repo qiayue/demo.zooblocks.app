@@ -137,6 +137,19 @@ async function main() {
     }
   }
 
+  // Pick a Cloudflare account if the user has more than one. We persist the
+  // choice to wrangler.toml so every subsequent `wrangler` invocation —
+  // including future redeploys — uses the right account without prompting.
+  let accountId = await resolveAccountId();
+  if (!accountId) {
+    fail(`Couldn't determine a Cloudflare account ID. Please re-run with`);
+    log(`  ${c.cyan}CLOUDFLARE_ACCOUNT_ID=your-id npm run init${c.reset}`);
+    process.exit(1);
+  }
+  await persistAccountId(tomlPath, accountId);
+  env.CLOUDFLARE_ACCOUNT_ID = accountId;
+  ok(`Using account: ${accountId}`);
+
   // ----- Step 4: create R2 bucket -----
   step(4, 6, `Create R2 bucket "${bucketName}"`);
   const create = spawnSync('npx', ['wrangler', 'r2', 'bucket', 'create', bucketName], {
@@ -186,6 +199,96 @@ function runStreaming(cmd, args) {
     const p = spawn(cmd, args, { stdio: 'inherit', shell: isWindows });
     p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} exited with ${code}`))));
   });
+}
+
+// ---------------------------------------------------------------------------
+// Cloudflare account selection.
+//
+// In the OAuth case the user might have several accounts; wrangler can't
+// pick one without an interactive TTY (and ours isn't quite one). We do
+// our own pick. The chosen ID is persisted as `account_id = "..."` in
+// wrangler.toml so future `wrangler deploy` calls don't need it.
+// ---------------------------------------------------------------------------
+
+async function resolveAccountId() {
+  // 1. Explicit env var wins.
+  if (env.CLOUDFLARE_ACCOUNT_ID) return env.CLOUDFLARE_ACCOUNT_ID;
+
+  // 2. Already pinned in wrangler.toml? Re-use.
+  try {
+    const toml = await readFile(new URL('../wrangler.toml', import.meta.url), 'utf8');
+    const m = toml.match(/^account_id\s*=\s*"([0-9a-f]{32})"/m);
+    if (m) return m[1];
+  } catch { /* fall through */ }
+
+  // 3. Probe wrangler for the available accounts.
+  const accounts = listAccounts();
+
+  if (accounts.length === 1) return accounts[0].id;
+  if (accounts.length === 0) {
+    // Token auth without listable accounts is fine — wrangler will figure
+    // it out from the token itself.
+    return null;
+  }
+
+  // 4. Multiple accounts — ask.
+  log('');
+  log(`  You have access to ${accounts.length} Cloudflare accounts. Pick one:`);
+  for (let i = 0; i < accounts.length; i++) {
+    log(`    ${c.bold}${i + 1}${c.reset}. ${accounts[i].name}  ${c.dim}(${accounts[i].id})${c.reset}`);
+  }
+  const rl = createInterface({ input, output });
+  const ans = await new Promise((r) =>
+    rl.question(`  Pick a number (1-${accounts.length}): `, (a) => r((a || '').trim())),
+  );
+  rl.close();
+  const idx = parseInt(ans, 10) - 1;
+  if (!Number.isFinite(idx) || idx < 0 || idx >= accounts.length) {
+    fail('Invalid choice.');
+    process.exit(1);
+  }
+  return accounts[idx].id;
+}
+
+function listAccounts() {
+  const r = spawnSync('npx', ['wrangler', 'whoami'], { encoding: 'utf8', shell: isWindows });
+  const text = `${r.stdout || ''}\n${r.stderr || ''}`;
+  const accounts = [];
+  const seen = new Set();
+  // Strategy: scan each line for a 32-char hex account ID. Whatever text
+  // appears before it (after stripping decorators) is the account name.
+  // This works for both wrangler whoami's table output and the
+  // "Available accounts are:" listing in error messages.
+  for (const line of text.split('\n')) {
+    const idMatch = line.match(/\b([0-9a-f]{32})\b/);
+    if (!idMatch) continue;
+    const id = idMatch[1];
+    if (seen.has(id)) continue;
+    const before = line.slice(0, idMatch.index);
+    const name = before.replace(/[│|`":]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!name || /account (id|name)/i.test(name)) continue;
+    seen.add(id);
+    accounts.push({ name, id });
+  }
+  return accounts;
+}
+
+async function persistAccountId(tomlPath, accountId) {
+  const toml = await readFile(tomlPath, 'utf8');
+  if (/^account_id\s*=/m.test(toml)) {
+    // Already set — only rewrite if it differs.
+    const next = toml.replace(/^account_id\s*=\s*"[^"]*"/m, `account_id = "${accountId}"`);
+    if (next !== toml) await writeFile(tomlPath, next);
+    return;
+  }
+  // Insert just after the `main = "..."` line for a stable position.
+  const next = toml.replace(/^(main\s*=\s*"[^"]*"\n)/m, `$1account_id = "${accountId}"\n`);
+  if (next === toml) {
+    // No `main =` to anchor on — prepend at the top.
+    await writeFile(tomlPath, `account_id = "${accountId}"\n${toml}`);
+  } else {
+    await writeFile(tomlPath, next);
+  }
 }
 
 main().catch((err) => {
