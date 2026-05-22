@@ -1,0 +1,15 @@
+# --- Sync rules ---
+#
+# Files under content/ are user data, managed by the /admin interface.
+# When merging an upstream update, ALWAYS keep the local version of these
+# files — never accept upstream's content/* changes.
+#
+# This relies on git's built-in "ours" merge driver, which has to be
+# registered once per clone:
+#
+#     git config merge.ours.driver true
+#
+# `npm run init` and `npm run sync` both do this automatically, so users
+# normally don't need to think about it.
+
+content/** merge=ours

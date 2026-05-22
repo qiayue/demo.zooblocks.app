@@ -1,0 +1,39 @@
+name = "webgame-template"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets (Tailwind CSS, client JS, favicon, etc.).
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Bundle JSON content into the Worker as text. Editing content via the admin
+# UI pushes to GitHub, which triggers an automatic redeploy.
+[[rules]]
+type = "Text"
+globs = ["**/*.json"]
+fallthrough = true
+
+# ----------------------------------------------------------------------------
+# Only ONE binding is required to deploy. Everything else is configured
+# at runtime via the /setup wizard.
+# ----------------------------------------------------------------------------
+#
+# Required:
+#   R2_UPLOADS — an R2 bucket used for cover-image uploads AND to store the
+#                runtime config file (_config/runtime.json).
+#
+# Optional (advanced users only — the /setup wizard is the normal path):
+#   ADMIN_PASSWORD         Bootstrap an admin password without using the wizard.
+#   ADMIN_SESSION_SECRET   Override the auto-generated session-signing secret.
+#   R2_UPLOAD_SECRET       Override the auto-generated upload-signing secret.
+#   GITHUB_TOKEN           GitHub PAT (instead of saving via the wizard).
+#   GITHUB_REPO            "owner/name".
+#   GITHUB_BRANCH          Defaults to "main".
+#   R2_PUBLIC_BASE_URL     R2 bucket's public URL.
+# ----------------------------------------------------------------------------
+
+[[r2_buckets]]
+binding = "R2_UPLOADS"
+bucket_name = "webgame-uploads"

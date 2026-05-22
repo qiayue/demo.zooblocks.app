@@ -1,0 +1,17 @@
+{
+  "playNow": "开始游戏",
+  "loadingGame": "游戏加载中…",
+  "fullscreen": "全屏",
+  "watchVideo": "观看视频",
+  "relatedGames": "相关游戏",
+  "latestGames": "最新游戏",
+  "relatedGuides": "相关攻略",
+  "taggedWith": "标签",
+  "faq": "常见问题",
+  "pros": "优点",
+  "cons": "缺点",
+  "language": "语言",
+  "home": "首页",
+  "searchPlaceholder": "搜索游戏…",
+  "poweredBy": "由 webgame-template 提供支持"
+}

@@ -1,0 +1,31 @@
+{
+  "type": "game",
+  "lang": "zh",
+  "slug": "sample-runner",
+  "title": "Sample Runner — 免费在线游玩",
+  "description": "Sample Runner 是一款用于演示游戏页面模板的无尽跑酷示例。请用你自己的游戏替换。",
+  "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
+  "tags": ["action", "runner"],
+  "publishedAt": "2026-05-01T00:00:00Z",
+  "updatedAt": "2026-05-21T00:00:00Z",
+  "alternateKey": "sample-runner",
+  "modules": [
+    {
+      "type": "game-iframe",
+      "url": "https://example.com/games/sample-runner/",
+      "ratio": "16:9"
+    },
+    {
+      "type": "seo-content",
+      "variant": "intro",
+      "heading": "关于 Sample Runner",
+      "body": "Sample Runner 是一款快节奏的跑酷游戏：奔跑、跳跃、滑行，穿越随机生成的街道。一边收集金币、一边躲避障碍物，解锁新角色。\n\n目标很简单：尽可能跑得更久，刷出更高的分数。每一局都不一样，既适合碎片化时间，也适合冲榜。"
+    },
+    {
+      "type": "page-list",
+      "heading": "相关游戏",
+      "source": "related",
+      "limit": 8
+    }
+  ]
+}
