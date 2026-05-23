@@ -7,7 +7,7 @@
   "cover": "",
   "tags": [],
   "publishedAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-05-23T11:10:26.171Z",
+  "updatedAt": "2026-05-23T11:30:25.305Z",
   "alternateKey": "home",
   "modules": [
     {
@@ -17,19 +17,19 @@
       "cover": "https://demor2.zooblocks.app/covers/1779534611799-5686c1004615-screenshot_2026-05-22_214417_381.png"
     },
     {
-      "type": "seo-content",
-      "variant": "intro",
-      "heading": "Welcome to your game site",
-      "body": "This is a starter homepage. Use the admin at `/admin` to add games, write guides, and customize this page. Every page is built from a few reusable modules: a game iframe, a video iframe, a page list, and SEO content blocks."
-    },
-    {
       "type": "page-list",
       "heading": "Latest Games",
       "source": "latest",
       "filter": {
-        "type": "game"
+        "type": "guide"
       },
       "limit": 12
+    },
+    {
+      "type": "seo-content",
+      "variant": "intro",
+      "heading": "Welcome to your game site",
+      "body": "This is a starter homepage. Use the admin at `/admin` to add games, write guides, and customize this page. Every page is built from a few reusable modules: a game iframe, a video iframe, a page list, and SEO content blocks."
     },
     {
       "type": "page-list",
@@ -40,6 +40,11 @@
       },
       "limit": 6,
       "layout": "list"
+    },
+    {
+      "type": "page-list",
+      "source": "latest",
+      "limit": 12
     },
     {
       "type": "seo-content",

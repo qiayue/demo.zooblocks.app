@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-05-23T11:10:26.479Z",
+  "generatedAt": "2026-05-23T11:30:25.637Z",
   "entries": [
     {
       "type": "game",
-      "lang": "en",
+      "lang": "zh",
       "slug": "sample-runner",
-      "title": "Sample Runner — Play Online Free",
-      "description": "Sample Runner is an endless-runner demo.",
+      "title": "Sample Runner — 免费在线游玩",
+      "description": "Sample Runner 是一款用于演示的跑酷示例。",
       "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
       "tags": [
         "action",
@@ -18,10 +18,10 @@
     },
     {
       "type": "game",
-      "lang": "zh",
+      "lang": "en",
       "slug": "sample-runner",
-      "title": "Sample Runner — 免费在线游玩",
-      "description": "Sample Runner 是一款用于演示的跑酷示例。",
+      "title": "Sample Runner — Play Online Free",
+      "description": "Sample Runner is an endless-runner demo.",
       "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
       "tags": [
         "action",
@@ -55,19 +55,7 @@
       "cover": "",
       "tags": [],
       "publishedAt": "2026-01-01T00:00:00Z",
-      "updatedAt": "2026-05-23T11:10:26.171Z",
-      "alternateKey": "home"
-    },
-    {
-      "type": "home",
-      "lang": "zh",
-      "slug": "home",
-      "title": "WebGame 模板 — 免费在线游戏",
-      "description": "基于 Cloudflare Workers 的在线小游戏网站模板。",
-      "cover": "",
-      "tags": [],
-      "publishedAt": "2026-01-01T00:00:00Z",
-      "updatedAt": "2026-05-21T00:00:00Z",
+      "updatedAt": "2026-05-23T11:30:25.305Z",
       "alternateKey": "home"
     },
     {
@@ -83,6 +71,18 @@
       "publishedAt": "2026-01-01T00:00:00Z",
       "updatedAt": "2026-05-21T00:00:00Z",
       "alternateKey": "tag-action"
+    },
+    {
+      "type": "home",
+      "lang": "zh",
+      "slug": "home",
+      "title": "WebGame 模板 — 免费在线游戏",
+      "description": "基于 Cloudflare Workers 的在线小游戏网站模板。",
+      "cover": "",
+      "tags": [],
+      "publishedAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-05-21T00:00:00Z",
+      "alternateKey": "home"
     }
   ]
 }
