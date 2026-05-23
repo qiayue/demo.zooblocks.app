@@ -1,17 +1,64 @@
 {
-  "generatedAt": "2026-05-21T00:00:00Z",
+  "generatedAt": "2026-05-23T11:09:31.575Z",
   "entries": [
     {
-      "type": "home",
+      "type": "game",
+      "lang": "zh",
+      "slug": "sample-runner",
+      "title": "Sample Runner — 免费在线游玩",
+      "description": "Sample Runner 是一款用于演示的跑酷示例。",
+      "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
+      "tags": [
+        "action",
+        "runner"
+      ],
+      "publishedAt": "2026-05-01T00:00:00Z",
+      "updatedAt": "2026-05-21T00:00:00Z",
+      "alternateKey": "sample-runner"
+    },
+    {
+      "type": "game",
       "lang": "en",
-      "slug": "home",
-      "title": "WebGame Template — Play Free Online Games",
-      "description": "A SEO-friendly template for building online game sites on Cloudflare Workers.",
+      "slug": "sample-runner",
+      "title": "Sample Runner — Play Online Free",
+      "description": "Sample Runner is an endless-runner demo.",
+      "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
+      "tags": [
+        "action",
+        "runner"
+      ],
+      "publishedAt": "2026-05-01T00:00:00Z",
+      "updatedAt": "2026-05-21T00:00:00Z",
+      "alternateKey": "sample-runner"
+    },
+    {
+      "type": "guide",
+      "lang": "en",
+      "slug": "getting-started",
+      "title": "Getting Started — A Beginner's Guide",
+      "description": "Brand new to browser games? This quick guide walks you through controls, settings, and how to find games you'll love.",
+      "cover": "https://placehold.co/1200x675/0ea5e9/ffffff?text=Guide",
+      "tags": [
+        "guide",
+        "beginner"
+      ],
+      "publishedAt": "2026-04-01T00:00:00Z",
+      "updatedAt": "2026-05-23T11:09:31.277Z",
+      "alternateKey": "getting-started"
+    },
+    {
+      "type": "tag",
+      "lang": "en",
+      "slug": "action",
+      "title": "Action Games — Fast-Paced, High-Adrenaline Fun",
+      "description": "Browse all action games on the site.",
       "cover": "",
-      "tags": [],
+      "tags": [
+        "action"
+      ],
       "publishedAt": "2026-01-01T00:00:00Z",
       "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "home"
+      "alternateKey": "tag-action"
     },
     {
       "type": "home",
@@ -26,52 +73,16 @@
       "alternateKey": "home"
     },
     {
-      "type": "game",
+      "type": "home",
       "lang": "en",
-      "slug": "sample-runner",
-      "title": "Sample Runner — Play Online Free",
-      "description": "Sample Runner is an endless-runner demo.",
-      "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
-      "tags": ["action", "runner"],
-      "publishedAt": "2026-05-01T00:00:00Z",
-      "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "sample-runner"
-    },
-    {
-      "type": "game",
-      "lang": "zh",
-      "slug": "sample-runner",
-      "title": "Sample Runner — 免费在线游玩",
-      "description": "Sample Runner 是一款用于演示的跑酷示例。",
-      "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
-      "tags": ["action", "runner"],
-      "publishedAt": "2026-05-01T00:00:00Z",
-      "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "sample-runner"
-    },
-    {
-      "type": "tag",
-      "lang": "en",
-      "slug": "action",
-      "title": "Action Games — Fast-Paced, High-Adrenaline Fun",
-      "description": "Browse all action games on the site.",
+      "slug": "home",
+      "title": "WebGame Template — Play Free Online Games",
+      "description": "A SEO-friendly template for building online game sites on Cloudflare Workers.",
       "cover": "",
-      "tags": ["action"],
+      "tags": [],
       "publishedAt": "2026-01-01T00:00:00Z",
       "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "tag-action"
-    },
-    {
-      "type": "guide",
-      "lang": "en",
-      "slug": "getting-started",
-      "title": "Getting Started — A Beginner's Guide",
-      "description": "A quick guide to browser games.",
-      "cover": "https://placehold.co/1200x675/0ea5e9/ffffff?text=Guide",
-      "tags": ["guide", "beginner"],
-      "publishedAt": "2026-04-01T00:00:00Z",
-      "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "getting-started"
+      "alternateKey": "home"
     }
   ]
 }

@@ -5,15 +5,18 @@
   "title": "Getting Started — A Beginner's Guide",
   "description": "Brand new to browser games? This quick guide walks you through controls, settings, and how to find games you'll love.",
   "cover": "https://placehold.co/1200x675/0ea5e9/ffffff?text=Guide",
-  "tags": ["guide", "beginner"],
+  "tags": [
+    "guide",
+    "beginner"
+  ],
   "publishedAt": "2026-04-01T00:00:00Z",
-  "updatedAt": "2026-05-21T00:00:00Z",
+  "updatedAt": "2026-05-23T11:09:31.277Z",
   "alternateKey": "getting-started",
   "modules": [
     {
       "type": "video-iframe",
       "url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      "ratio": "16:9",
+      "ratio": "4:3",
       "title": "Getting started"
     },
     {
@@ -25,7 +28,9 @@
       "type": "page-list",
       "heading": "Related guides",
       "source": "related",
-      "filter": { "type": "guide" },
+      "filter": {
+        "type": "guide"
+      },
       "limit": 8
     }
   ]
