@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-05-23T11:09:31.575Z",
+  "generatedAt": "2026-05-23T11:10:26.479Z",
   "entries": [
     {
       "type": "game",
-      "lang": "zh",
+      "lang": "en",
       "slug": "sample-runner",
-      "title": "Sample Runner — 免费在线游玩",
-      "description": "Sample Runner 是一款用于演示的跑酷示例。",
+      "title": "Sample Runner — Play Online Free",
+      "description": "Sample Runner is an endless-runner demo.",
       "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
       "tags": [
         "action",
@@ -18,10 +18,10 @@
     },
     {
       "type": "game",
-      "lang": "en",
+      "lang": "zh",
       "slug": "sample-runner",
-      "title": "Sample Runner — Play Online Free",
-      "description": "Sample Runner is an endless-runner demo.",
+      "title": "Sample Runner — 免费在线游玩",
+      "description": "Sample Runner 是一款用于演示的跑酷示例。",
       "cover": "https://placehold.co/1200x675/4f46e5/ffffff?text=Sample+Runner",
       "tags": [
         "action",
@@ -47,18 +47,16 @@
       "alternateKey": "getting-started"
     },
     {
-      "type": "tag",
+      "type": "home",
       "lang": "en",
-      "slug": "action",
-      "title": "Action Games — Fast-Paced, High-Adrenaline Fun",
-      "description": "Browse all action games on the site.",
+      "slug": "home",
+      "title": "WebGame Template — Play Free Online Games",
+      "description": "A SEO-friendly template for building online game sites on Cloudflare Workers. Replace this with your own catalog of HTML5 games.",
       "cover": "",
-      "tags": [
-        "action"
-      ],
+      "tags": [],
       "publishedAt": "2026-01-01T00:00:00Z",
-      "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "tag-action"
+      "updatedAt": "2026-05-23T11:10:26.171Z",
+      "alternateKey": "home"
     },
     {
       "type": "home",
@@ -73,16 +71,18 @@
       "alternateKey": "home"
     },
     {
-      "type": "home",
+      "type": "tag",
       "lang": "en",
-      "slug": "home",
-      "title": "WebGame Template — Play Free Online Games",
-      "description": "A SEO-friendly template for building online game sites on Cloudflare Workers.",
+      "slug": "action",
+      "title": "Action Games — Fast-Paced, High-Adrenaline Fun",
+      "description": "Browse all action games on the site.",
       "cover": "",
-      "tags": [],
+      "tags": [
+        "action"
+      ],
       "publishedAt": "2026-01-01T00:00:00Z",
       "updatedAt": "2026-05-21T00:00:00Z",
-      "alternateKey": "home"
+      "alternateKey": "tag-action"
     }
   ]
 }

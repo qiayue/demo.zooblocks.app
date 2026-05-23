@@ -7,9 +7,15 @@
   "cover": "",
   "tags": [],
   "publishedAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-05-21T00:00:00Z",
+  "updatedAt": "2026-05-23T11:10:26.171Z",
   "alternateKey": "home",
   "modules": [
+    {
+      "type": "game-iframe",
+      "url": "https://zooblocks.app/",
+      "ratio": "16:9",
+      "cover": "https://demor2.zooblocks.app/covers/1779534611799-5686c1004615-screenshot_2026-05-22_214417_381.png"
+    },
     {
       "type": "seo-content",
       "variant": "intro",
@@ -20,14 +26,18 @@
       "type": "page-list",
       "heading": "Latest Games",
       "source": "latest",
-      "filter": { "type": "game" },
+      "filter": {
+        "type": "game"
+      },
       "limit": 12
     },
     {
       "type": "page-list",
       "heading": "Latest Guides",
       "source": "latest",
-      "filter": { "type": "guide" },
+      "filter": {
+        "type": "guide"
+      },
       "limit": 6,
       "layout": "list"
     },
@@ -36,9 +46,21 @@
       "variant": "features-grid",
       "heading": "Why this template",
       "items": [
-        { "icon": "⚡", "title": "Fast and SEO-friendly", "body": "Server-rendered HTML on Cloudflare Workers — fast TTFB, perfect for search crawlers." },
-        { "icon": "🧩", "title": "Composable modules", "body": "Every page is built from a few reusable modules you can rearrange." },
-        { "icon": "🌍", "title": "Multilingual by design", "body": "Each page version is independent; hreflang and language switcher generated automatically." }
+        {
+          "icon": "⚡",
+          "title": "Fast and SEO-friendly",
+          "body": "Server-rendered HTML on Cloudflare Workers — fast TTFB, perfect for search crawlers."
+        },
+        {
+          "icon": "🧩",
+          "title": "Composable modules",
+          "body": "Every page is built from a few reusable modules you can rearrange."
+        },
+        {
+          "icon": "🌍",
+          "title": "Multilingual by design",
+          "body": "Each page version is independent; hreflang and language switcher generated automatically."
+        }
       ]
     }
   ]
